@@ -1,0 +1,12 @@
+# Render blueprint: free-tier web service for the Streamlit dashboard.
+# The app reads only the committed, pre-aggregated files in results/.
+services:
+  - type: web
+    name: cross-asset-momentum
+    runtime: python
+    plan: free
+    buildCommand: pip install -r app/requirements.txt
+    startCommand: streamlit run app/app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
