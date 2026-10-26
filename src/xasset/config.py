@@ -46,6 +46,7 @@ FRED_SERIES = {
     "DGS10": "dgs10",    # 10Y constant-maturity Treasury yield, %
     "DGS2": "dgs2",      # 2Y constant-maturity Treasury yield, %
     "T10Y2Y": "t10y2y",  # 10Y minus 2Y, percentage points (published by FRED)
+    "DTB3": "dtb3",      # 3-month T-bill, secondary market, DISCOUNT basis, % (risk-free rate)
 }
 
 # --- Download behaviour ------------------------------------------------------

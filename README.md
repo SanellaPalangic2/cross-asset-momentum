@@ -11,8 +11,19 @@ The last 3 years (2023-10-01 to 2026-09-30) are a true hold-out. All parameters 
 earlier data only. Costs are 10 bp per side. Positions trade at the close one session after the signal.
 
 - Cross-sectional momentum **showed no statistically significant predictive power out of sample**: 12-1 momentum IC 0.023 with t-stat 0.37 (threshold 2). The strategy's OOS Sharpe was -0.01 (in-sample 0.15), and in-sample it suffered a -55% drawdown.
-- Time-series trend had an OOS Sharpe of 1.22 (in-sample 0.73), below the equal-weight benchmark's 1.59 out of sample (in-sample: 0.73 vs 0.48). In-sample max drawdown was -14% vs the benchmark's -41%, so its clearest benefit is drawdown control.
-- The ML model **did not significantly beat** simple 12-1 momentum. On identical months, its mean IC was 0.081 vs 0.023 out of sample (paired difference t = 0.91, p = 0.37, 35 months) and 0.050 vs 0.065 before the hold-out (t = -0.41, p = 0.68, 139 months). A higher point estimate on a few dozen noisy monthly ICs is not evidence of a better signal.
+- Time-series trend had an OOS Sharpe of 0.56 (in-sample 0.63), below the equal-weight benchmark's 1.13 out of sample (in-sample: 0.63 vs 0.42). In-sample max drawdown was -14% vs the benchmark's -41%, so its clearest benefit is drawdown control. Volatility scaling runs it 1.24x net long in-sample and 1.45x out of sample. With that leverage financed at the T-bill rate and Sharpe measured over it, its OOS Sharpe is 0.56, versus 1.22 under the old 0%-cash convention, which let it borrow for free.
+- The ML model **did not significantly beat** simple 12-1 momentum. On identical months, its mean IC was 0.081 vs 0.023 out of sample (paired difference t = 0.91, p = 0.371, 35 months) and 0.050 vs 0.065 before the hold-out (t = -0.41, p = 0.682, 139 months). A higher point estimate on a few dozen noisy monthly ICs is not evidence of a better signal.
+
+Sharpe ratios are on returns in excess of the 3-month T-bill. Idle cash earns the T-bill rate, and leverage
+is financed at it. The previous convention (cash earns 0%, Sharpe on raw returns) is shown alongside for comparison.
+
+| Strategy                         |   IS Sharpe (0% rf) |   IS Sharpe (excess) |   OOS Sharpe (0% rf) |   OOS Sharpe (excess) | OOS ann. return   | OOS ann. vol   | OOS max DD   |
+|:---------------------------------|--------------------:|---------------------:|---------------------:|----------------------:|:------------------|:---------------|:-------------|
+| XS momentum (L/S terciles)       |                0.15 |                 0.15 |                -0.01 |                 -0.01 | 3.5%              | 13.2%          | -17%         |
+| TS trend (vol-scaled)            |                0.73 |                 0.63 |                 1.22 |                  0.56 | 9.8%              | 9.8%           | -11%         |
+| Equal weight, monthly rebalanced |                0.48 |                 0.42 |                 1.59 |                  1.13 | 16.0%             | 9.7%           | -11%         |
+| Equal weight, buy and hold       |                0.51 |                 0.45 |                 1.38 |                  1.02 | 17.8%             | 12.5%          | -14%         |
+| ML rank L/S (walk-forward)       |                0.15 |                 0.15 |                 0.33 |                  0.33 | 7.8%              | 11.2%          | -11%         |
 
 ![Cumulative returns](results/figures/cumulative_returns.png)
 
@@ -21,7 +32,7 @@ earlier data only. Costs are 10 bp per side. Positions trade at the close one se
 | Source | Series | Notes |
 |---|---|---|
 | yfinance | 24 ETFs, daily `Adj Close` and volume | `Adj Close` is split- **and** dividend-adjusted; every return uses it (enforced by `tests/test_return_basis.py`) |
-| FRED (pandas-datareader, no key) | DGS10, DGS2, T10Y2Y | lagged 1 session for publication; forward-filled at most 5 sessions |
+| FRED (pandas-datareader, no key) | DGS10, DGS2, T10Y2Y, DTB3 (3M T-bill: risk-free rate, converted from discount to bond-equivalent yield) | lagged 1 session for publication; forward-filled at most 5 sessions |
 
 Window: 2007-01-03 to 2026-09-30. First signal 2008-01-31 (after the longest look-back warms up).
 
@@ -85,20 +96,21 @@ leaky feature is included to prove the check can fail.
 
 ## Results: in-sample vs out-of-sample (net of 10 bp)
 
-| Strategy                         | Period                             | Ann. return   | Ann. vol   |   Sharpe | Max DD   |   Turnover/yr | Hit rate (months)   |
-|:---------------------------------|:-----------------------------------|:--------------|:-----------|---------:|:---------|--------------:|:--------------------|
-| XS momentum (L/S terciles)       | in-sample (2008-02 to 2023-09)     | 1.1%          | 19.2%      |     0.15 | -55%     |          11.8 | 55%                 |
-| XS momentum (L/S terciles)       | out-of-sample (2023-10 to 2026-09) | -1.0%         | 13.2%      |    -0.01 | -19%     |          12   | 56%                 |
-| TS trend (vol-scaled)            | in-sample (2008-02 to 2023-09)     | 6.4%          | 9.0%       |     0.73 | -14%     |           4.8 | 65%                 |
-| TS trend (vol-scaled)            | out-of-sample (2023-10 to 2026-09) | 12.1%         | 9.8%       |     1.22 | -10%     |           4.8 | 72%                 |
-| Equal weight, monthly rebalanced | in-sample (2008-02 to 2023-09)     | 5.9%          | 13.9%      |     0.48 | -41%     |           0.5 | 64%                 |
-| Equal weight, monthly rebalanced | out-of-sample (2023-10 to 2026-09) | 16.0%         | 9.7%       |     1.59 | -11%     |           0.4 | 72%                 |
-| Equal weight, buy and hold       | in-sample (2008-02 to 2023-09)     | 6.2%          | 13.7%      |     0.51 | -39%     |           0.1 | 64%                 |
-| Equal weight, buy and hold       | out-of-sample (2023-10 to 2026-09) | 17.8%         | 12.5%      |     1.38 | -14%     |           0   | 67%                 |
-| ML rank L/S (walk-forward)       | in-sample (2012-02 to 2023-09)     | 1.1%          | 11.9%      |     0.15 | -28%     |          22.4 | 48%                 |
-| ML rank L/S (walk-forward)       | out-of-sample (2023-10 to 2026-09) | 3.2%          | 11.2%      |     0.33 | -12%     |          20.2 | 58%                 |
+| Strategy                         | Period                             | Ann. return   | Ann. vol   |   Sharpe (excess) |   Sharpe (0% rf, old) | Max DD   |   Turnover/yr | Hit rate (months)   |
+|:---------------------------------|:-----------------------------------|:--------------|:-----------|------------------:|----------------------:|:---------|--------------:|:--------------------|
+| XS momentum (L/S terciles)       | in-sample (2008-02 to 2023-09)     | 1.9%          | 19.2%      |              0.15 |                  0.15 | -55%     |          11.8 | 55%                 |
+| XS momentum (L/S terciles)       | out-of-sample (2023-10 to 2026-09) | 3.5%          | 13.2%      |             -0.01 |                 -0.01 | -17%     |          12   | 61%                 |
+| TS trend (vol-scaled)            | in-sample (2008-02 to 2023-09)     | 6.3%          | 9.0%       |              0.63 |                  0.73 | -14%     |           4.8 | 64%                 |
+| TS trend (vol-scaled)            | out-of-sample (2023-10 to 2026-09) | 9.8%          | 9.8%       |              0.56 |                  1.22 | -11%     |           4.8 | 72%                 |
+| Equal weight, monthly rebalanced | in-sample (2008-02 to 2023-09)     | 5.9%          | 13.9%      |              0.42 |                  0.48 | -41%     |           0.5 | 64%                 |
+| Equal weight, monthly rebalanced | out-of-sample (2023-10 to 2026-09) | 16.0%         | 9.7%       |              1.13 |                  1.59 | -11%     |           0.4 | 72%                 |
+| Equal weight, buy and hold       | in-sample (2008-02 to 2023-09)     | 6.2%          | 13.7%      |              0.45 |                  0.51 | -39%     |           0.1 | 64%                 |
+| Equal weight, buy and hold       | out-of-sample (2023-10 to 2026-09) | 17.8%         | 12.5%      |              1.02 |                  1.38 | -14%     |           0   | 67%                 |
+| ML rank L/S (walk-forward)       | in-sample (2012-02 to 2023-09)     | 2.1%          | 11.9%      |              0.15 |                  0.15 | -25%     |          22.4 | 50%                 |
+| ML rank L/S (walk-forward)       | out-of-sample (2023-10 to 2026-09) | 7.8%          | 11.2%      |              0.33 |                  0.33 | -11%     |          20.1 | 67%                 |
 
-Sharpe ratios use a 0% risk-free rate (see Limitations). Max drawdown is measured within each period, so a
+Sharpe (excess) is on returns over the T-bill; Sharpe (0% rf, old) is the previous convention. Annual return
+includes interest on idle cash and the cost of financing leverage. Max drawdown is measured within each period, so a
 drawdown that spans the boundary is split; the chart below shows the continuous series. The ML strategy starts in 2012, after its first
 walk-forward training window.
 
@@ -127,12 +139,14 @@ window, using only rows whose label had fully realized by the fit date. Hyperpar
 and never tuned. Retraining continues through the hold-out, as it would in live trading; no choice was made
 after seeing hold-out results.
 
-The ML model **did not significantly beat** simple 12-1 momentum. On identical months, its mean IC was 0.081 vs 0.023 out of sample (paired difference t = 0.91, p = 0.37, 35 months) and 0.050 vs 0.065 before the hold-out (t = -0.41, p = 0.68, 139 months). A higher point estimate on a few dozen noisy monthly ICs is not evidence of a better signal.
+The ML model **did not significantly beat** simple 12-1 momentum. On identical months, its mean IC was 0.081 vs 0.023 out of sample (paired difference t = 0.91, p = 0.371, 35 months) and 0.050 vs 0.065 before the hold-out (t = -0.41, p = 0.682, 139 months). A higher point estimate on a few dozen noisy monthly ICs is not evidence of a better signal.
 
 | Period        |   Months |   ML mean IC |   12-1 momentum mean IC |   Difference |   Paired t |   p-value |
 |:--------------|---------:|-------------:|------------------------:|-------------:|-----------:|----------:|
-| in-sample     |      139 |        0.05  |                   0.065 |       -0.015 |      -0.41 |      0.68 |
-| out-of-sample |       35 |        0.081 |                   0.023 |        0.057 |       0.91 |      0.37 |
+| in-sample     |      139 |        0.05  |                   0.065 |       -0.015 |      -0.41 |     0.682 |
+| out-of-sample |       35 |        0.081 |                   0.023 |        0.057 |       0.91 |     0.371 |
+
+Note: momentum's OOS IC t-stat (0.3719) and this p-value (0.3714) round to the same two decimals by coincidence. The first tests whether momentum's mean IC differs from zero (one-sample t on the IC series). The second tests whether ML's IC differs from momentum's on the same months (paired t-test on the difference, t = 0.9059). `tests/test_research.py` recomputes both from the monthly ICs.
 
 ## Robustness
 
@@ -142,37 +156,37 @@ Cross-sectional momentum:
 
 | Parameters   | Selected (IS only)   | Spec default   |   IS Sharpe | IS ann. return   |   OOS Sharpe | OOS ann. return   |
 |:-------------|:---------------------|:---------------|------------:|:-----------------|-------------:|:------------------|
-| 3-1 months   |                      |                |       -0.05 | -2.6%            |        -1.16 | -16.5%            |
-| 6-1 months   |                      |                |        0.12 | 0.5%             |        -1.01 | -13.9%            |
-| 9-1 months   | **yes**              |                |        0.15 | 1.1%             |        -0.01 | -1.0%             |
-| 12-1 months  |                      | yes            |        0.15 | 1.1%             |         0.19 | 1.7%              |
-| 12-0 months  |                      |                |        0.07 | -0.5%            |         0.54 | 6.8%              |
+| 3-1 months   |                      |                |       -0.05 | -1.8%            |        -1.15 | -12.7%            |
+| 6-1 months   |                      |                |        0.13 | 1.4%             |        -1.01 | -10.0%            |
+| 9-1 months   | **yes**              |                |        0.15 | 1.9%             |        -0.01 | 3.5%              |
+| 12-1 months  |                      | yes            |        0.15 | 1.9%             |         0.19 | 6.3%              |
+| 12-0 months  |                      |                |        0.08 | 0.3%             |         0.54 | 11.6%             |
 
 Time-series trend:
 
 | Parameters           | Selected (IS only)   | Spec default   |   IS Sharpe | IS ann. return   |   OOS Sharpe | OOS ann. return   |
 |:---------------------|:---------------------|:---------------|------------:|:-----------------|-------------:|:------------------|
-| MA 50d, flat below   |                      |                |        0.37 | 2.8%             |         1.12 | 9.8%              |
-| MA 50d, short below  |                      |                |       -0.21 | -2.6%            |         0.01 | -0.3%             |
-| MA 100d, flat below  |                      |                |        0.61 | 5.1%             |         1.05 | 10.0%             |
-| MA 100d, short below |                      |                |        0.24 | 2.0%             |         0.07 | 0.2%              |
-| MA 150d, flat below  | **yes**              |                |        0.73 | 6.4%             |         1.22 | 12.1%             |
-| MA 150d, short below |                      |                |        0.48 | 4.5%             |         0.49 | 4.1%              |
-| MA 200d, flat below  |                      | yes            |        0.72 | 6.5%             |         1.29 | 13.4%             |
-| MA 200d, short below |                      | yes            |        0.52 | 4.9%             |         0.74 | 6.8%              |
-| MA 250d, flat below  |                      |                |        0.68 | 6.1%             |         1.3  | 14.4%             |
-| MA 250d, short below |                      |                |        0.47 | 4.3%             |         0.9  | 8.7%              |
+| MA 50d, flat below   |                      |                |        0.26 | 2.7%             |         0.48 | 8.5%              |
+| MA 50d, short below  |                      |                |       -0.24 | -2.1%            |        -0.34 | 1.0%              |
+| MA 100d, flat below  |                      |                |        0.5  | 5.0%             |         0.42 | 8.2%              |
+| MA 100d, short below |                      |                |        0.2  | 2.5%             |        -0.37 | 0.5%              |
+| MA 150d, flat below  | **yes**              |                |        0.63 | 6.3%             |         0.56 | 9.8%              |
+| MA 150d, short below |                      |                |        0.44 | 5.0%             |        -0.05 | 3.6%              |
+| MA 200d, flat below  |                      | yes            |        0.62 | 6.4%             |         0.64 | 10.9%             |
+| MA 200d, short below |                      | yes            |        0.48 | 5.4%             |         0.18 | 5.8%              |
+| MA 250d, flat below  |                      |                |        0.58 | 6.0%             |         0.66 | 11.5%             |
+| MA 250d, short below |                      |                |        0.43 | 4.7%             |         0.31 | 7.2%              |
 
 ### Transaction costs
 
 | Strategy                         | Period        |   Sharpe @ 0 bp |   Sharpe @ 10 bp |   Sharpe @ 25 bp |   Sharpe @ 50 bp |   Turnover/yr |
 |:---------------------------------|:--------------|----------------:|-----------------:|-----------------:|-----------------:|--------------:|
 | XS momentum (L/S terciles)       | in-sample     |            0.21 |             0.15 |             0.06 |            -0.09 |          11.8 |
-| XS momentum (L/S terciles)       | out-of-sample |            0.08 |            -0.01 |            -0.14 |            -0.36 |          12   |
-| TS trend (vol-scaled)            | in-sample     |            0.78 |             0.73 |             0.65 |             0.51 |           4.8 |
-| TS trend (vol-scaled)            | out-of-sample |            1.27 |             1.22 |             1.14 |             1.02 |           4.8 |
-| Equal weight, monthly rebalanced | in-sample     |            0.49 |             0.48 |             0.48 |             0.47 |           0.5 |
-| Equal weight, monthly rebalanced | out-of-sample |            1.59 |             1.59 |             1.58 |             1.57 |           0.4 |
+| XS momentum (L/S terciles)       | out-of-sample |            0.09 |            -0.01 |            -0.14 |            -0.36 |          12   |
+| TS trend (vol-scaled)            | in-sample     |            0.68 |             0.63 |             0.55 |             0.41 |           4.8 |
+| TS trend (vol-scaled)            | out-of-sample |            0.61 |             0.56 |             0.48 |             0.36 |           4.8 |
+| Equal weight, monthly rebalanced | in-sample     |            0.43 |             0.42 |             0.42 |             0.41 |           0.5 |
+| Equal weight, monthly rebalanced | out-of-sample |            1.13 |             1.13 |             1.13 |             1.12 |           0.4 |
 
 At 50 bp, XS momentum's in-sample Sharpe is -0.09; its turnover makes it the
 most cost-sensitive strategy.
@@ -183,20 +197,20 @@ most cost-sensitive strategy.
 
 | Window                                     | XS momentum (L/S terciles)   | TS trend (vol-scaled)   | Equal weight, monthly rebalanced   |
 |:-------------------------------------------|:-----------------------------|:------------------------|:-----------------------------------|
-| 2008 crisis (2008-09-01 to 2009-03-31)     | 14.7% (DD -22%)              | 0.4% (DD -2%)           | -28.7% (DD -36%)                   |
-| 2020 COVID (2020-02-19 to 2020-04-30)      | -3.1% (DD -10%)              | -7.4% (DD -13%)         | -14.4% (DD -27%)                   |
-| 2022 rate hikes (2022-01-01 to 2022-12-31) | 12.8% (DD -12%)              | -5.5% (DD -6%)          | -7.8% (DD -17%)                    |
+| 2008 crisis (2008-09-01 to 2009-03-31)     | 14.9% (DD -22%)              | 0.5% (DD -2%)           | -28.7% (DD -36%)                   |
+| 2020 COVID (2020-02-19 to 2020-04-30)      | -3.0% (DD -10%)              | -7.4% (DD -13%)         | -14.4% (DD -27%)                   |
+| 2022 rate hikes (2022-01-01 to 2022-12-31) | 15.1% (DD -12%)              | -4.0% (DD -5%)          | -7.8% (DD -17%)                    |
 
 ### Yield curve inverted vs not (regime known at the start of each month)
 
-| Strategy                         | Curve        |   Months |   of which OOS | Mean monthly return   |   Ann. Sharpe | Hit rate   |
-|:---------------------------------|:-------------|---------:|---------------:|:----------------------|--------------:|:-----------|
-| XS momentum (L/S terciles)       | inverted     |       26 |             11 | -1.14%                |         -1.38 | 42%        |
-| XS momentum (L/S terciles)       | not inverted |      198 |             25 | 0.31%                 |          0.26 | 57%        |
-| TS trend (vol-scaled)            | inverted     |       26 |             11 | 0.35%                 |          0.49 | 62%        |
-| TS trend (vol-scaled)            | not inverted |      198 |             25 | 0.65%                 |          0.92 | 67%        |
-| Equal weight, monthly rebalanced | inverted     |       26 |             11 | 0.77%                 |          0.75 | 62%        |
-| Equal weight, monthly rebalanced | not inverted |      198 |             25 | 0.65%                 |          0.66 | 66%        |
+| Strategy                         | Curve        |   Months |   of which OOS | Mean monthly excess return   |   Ann. Sharpe (excess) | Hit rate   |
+|:---------------------------------|:-------------|---------:|---------------:|:-----------------------------|-----------------------:|:-----------|
+| XS momentum (L/S terciles)       | inverted     |       26 |             11 | -1.14%                       |                  -1.38 | 42%        |
+| XS momentum (L/S terciles)       | not inverted |      198 |             25 | 0.31%                        |                   0.26 | 57%        |
+| TS trend (vol-scaled)            | inverted     |       26 |             11 | -0.08%                       |                  -0.11 | 58%        |
+| TS trend (vol-scaled)            | not inverted |      198 |             25 | 0.54%                        |                   0.76 | 63%        |
+| Equal weight, monthly rebalanced | inverted     |       26 |             11 | 0.38%                        |                   0.37 | 62%        |
+| Equal weight, monthly rebalanced | not inverted |      198 |             25 | 0.56%                        |                   0.57 | 65%        |
 
 Only 26 months had an inverted curve, so these differences are not statistically meaningful.
 
@@ -215,8 +229,9 @@ Only 26 months had an inverted curve, so these differences are not statistically
   only 36 months, during a strong bull market.
 - **Transaction costs are estimated**, as a flat per-side rate. There is no bid-ask modelling, market impact or
   borrow cost for shorts.
-- **Sharpe uses a 0% risk-free rate**, and idle cash earns 0%. This overstates long-only Sharpe relative to an
-  excess-return Sharpe; long/short books would also earn interest on collateral.
+- **Financing is idealized.** Cash and leverage both earn or pay exactly the T-bill rate. Real brokers charge
+  a spread over it, and shorting ETFs carries borrow fees, both of which would lower the levered and
+  long/short results.
 - **Selection bias.** The ETF list was chosen with hindsight; all of these funds survived.
 - **Single, unofficial data vendor** (yfinance), with no second source to cross-check prices.
 - **Past performance does not predict future results.**

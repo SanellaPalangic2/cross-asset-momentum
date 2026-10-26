@@ -1,5 +1,6 @@
 """Hold-out discipline: parameter selection can't see OOS data, and the IS/OOS label split is purged."""
 import numpy as np
+import pytest
 import pandas as pd
 
 from xasset import config
@@ -47,3 +48,34 @@ def test_signal_split_purges_the_straddling_label():
     assert list(is_) == [sig[0]]
     assert list(oos) == [sig[2], sig[3]]
     assert sig[1] not in is_ and sig[1] not in oos  # its label crosses OOS_START
+
+
+def test_ic_tstat_and_ml_pvalue_are_separately_computed():
+    """Momentum's IC t-stat and the ML-vs-momentum p-value are different statistics.
+
+    Recompute both from the monthly ICs and check them against the stored results.
+    """
+    import json
+
+    from scipy import stats
+
+    res = config.RESULTS_DIR
+    summary = json.loads((res / "summary.json").read_text())
+    ic = pd.read_csv(res / "ic_monthly.csv", index_col="date", parse_dates=True)
+    oos_ic = ic[ic.index >= summary["first_oos_signal"]]
+
+    mom = oos_ic["mom_12_1"].dropna()
+    t_mom = mom.mean() / (mom.std(ddof=1) / np.sqrt(len(mom)))   # one-sample t on the IC itself
+    stored_t = pd.read_csv(res / "ic_summary.csv").set_index(["signal", "period"]).loc[
+        ("mom_12_1", "out-of-sample"), "ic_t"]
+    assert t_mom == pytest.approx(stored_t, rel=1e-9)
+
+    both = oos_ic[["ml_pred", "mom_12_1"]].dropna()
+    t_diff, p_diff = stats.ttest_1samp(both["ml_pred"] - both["mom_12_1"], 0.0)   # paired test on the difference
+    stored = pd.read_csv(res / "ml_vs_momentum.csv").set_index("period").loc["out-of-sample"]
+    assert p_diff == pytest.approx(stored["diff_p"], rel=1e-9)
+    assert t_diff == pytest.approx(stored["diff_t"], rel=1e-9)
+
+    # Different quantities: a t-stat for "mean IC != 0" vs a p-value for "ML IC != momentum IC".
+    assert t_mom != pytest.approx(p_diff, abs=1e-6)
+    assert t_diff != pytest.approx(t_mom, abs=1e-3)

@@ -66,8 +66,23 @@ def performance_table(perf):
             p = perf[(perf["strategy"] == k) & (perf["period"] == period)].iloc[0]
             rows.append({"Strategy": NAMES[k], "Period": f"{period} ({p['start'][:7]} to {p['end'][:7]})",
                          "Ann. return": pct(p["ann_return"]), "Ann. vol": pct(p["ann_vol"]),
-                         "Sharpe": num(p["sharpe"]), "Max DD": pct(p["max_drawdown"], 0),
+                         "Sharpe (excess)": num(p["sharpe"]), "Sharpe (0% rf, old)": num(p["sharpe_rf0"]),
+                         "Max DD": pct(p["max_drawdown"], 0),
                          "Turnover/yr": num(p["turnover_per_year"], 1), "Hit rate (months)": pct(p["hit_rate_monthly"], 0)})
+    return md(pd.DataFrame(rows))
+
+
+def headline_table(perf):
+    """One row per strategy: old vs excess Sharpe in both periods, plus OOS return, vol and drawdown."""
+    rows = []
+    for k in NAMES:
+        i = perf[(perf["strategy"] == k) & (perf["period"] == "in-sample")].iloc[0]
+        o = perf[(perf["strategy"] == k) & (perf["period"] == "out-of-sample")].iloc[0]
+        rows.append({"Strategy": NAMES[k],
+                     "IS Sharpe (0% rf)": num(i["sharpe_rf0"]), "IS Sharpe (excess)": num(i["sharpe"]),
+                     "OOS Sharpe (0% rf)": num(o["sharpe_rf0"]), "OOS Sharpe (excess)": num(o["sharpe"]),
+                     "OOS ann. return": pct(o["ann_return"]), "OOS ann. vol": pct(o["ann_vol"]),
+                     "OOS max DD": pct(o["max_drawdown"], 0)})
     return md(pd.DataFrame(rows))
 
 
@@ -77,7 +92,7 @@ def ml_table(ml):
         "ML mean IC": ml["ml_ic_mean"].map(lambda x: num(x, 3)),
         "12-1 momentum mean IC": ml["mom_ic_mean"].map(lambda x: num(x, 3)),
         "Difference": ml["diff_mean"].map(lambda x: num(x, 3)),
-        "Paired t": ml["diff_t"].map(num), "p-value": ml["diff_p"].map(num),
+        "Paired t": ml["diff_t"].map(num), "p-value": ml["diff_p"].map(lambda x: num(x, 3)),
     }))
 
 
@@ -135,8 +150,8 @@ def regime_table(reg):
     return md(pd.DataFrame({
         "Strategy": reg["strategy"].map(NAMES), "Curve": reg["regime"],
         "Months": reg["months"], "of which OOS": reg["oos_months"],
-        "Mean monthly return": reg["mean_monthly"].map(lambda x: pct(x, 2)),
-        "Ann. Sharpe": reg["ann_sharpe"].map(num), "Hit rate": reg["hit_rate"].map(lambda x: pct(x, 0)),
+        "Mean monthly excess return": reg["mean_monthly_excess"].map(lambda x: pct(x, 2)),
+        "Ann. Sharpe (excess)": reg["ann_sharpe"].map(num), "Hit rate": reg["hit_rate"].map(lambda x: pct(x, 0)),
     }))
 
 
@@ -153,6 +168,7 @@ def dq_section(dq):
 
 
 def verdicts(r) -> dict:
+    s = r["summary"]
     P = perf_lookup(r["perf"])
     ic = r["ic"].set_index(["signal", "period"])
     ml = r["ml"].set_index("period")
@@ -170,15 +186,26 @@ def verdicts(r) -> dict:
                f"{'above' if beat else 'below'} the equal-weight benchmark's {num(ew_o.sharpe)} out of sample "
                f"(in-sample: {num(ts_i.sharpe)} vs {num(ew_i.sharpe)}). In-sample max drawdown was "
                f"{pct(ts_i.max_drawdown, 0)} vs the benchmark's {pct(ew_i.max_drawdown, 0)}"
-               + (", so its clearest benefit is drawdown control." if ts_i.max_drawdown > ew_i.max_drawdown / 2 else "."))
+               + (", so its clearest benefit is drawdown control." if ts_i.max_drawdown > ew_i.max_drawdown / 2 else ".")
+               + f" Volatility scaling runs it {s['ts_trend_net_exposure']['in-sample']:.2f}x net long in-sample and "
+               f"{s['ts_trend_net_exposure']['out-of-sample']:.2f}x out of sample. With that leverage financed at the "
+               f"T-bill rate and Sharpe measured over it, its OOS Sharpe is {num(ts_o.sharpe)}, versus "
+               f"{num(ts_o.sharpe_rf0)} under the old 0%-cash convention, which let it borrow for free.")
     o, i = ml.loc["out-of-sample"], ml.loc["in-sample"]
     sig = (o.diff_p < P_SIGNIFICANT) and (o.diff_mean > 0)
     v["ml"] = (f"The ML model **{'beat' if sig else 'did not significantly beat'}** simple 12-1 momentum. On identical "
                f"months, its mean IC was {num(o.ml_ic_mean, 3)} vs {num(o.mom_ic_mean, 3)} out of sample "
-               f"(paired difference t = {num(o.diff_t)}, p = {num(o.diff_p)}, {int(o.months)} months) and "
+               f"(paired difference t = {num(o.diff_t)}, p = {num(o.diff_p, 3)}, {int(o.months)} months) and "
                f"{num(i.ml_ic_mean, 3)} vs {num(i.mom_ic_mean, 3)} before the hold-out (t = {num(i.diff_t)}, "
-               f"p = {num(i.diff_p)}, {int(i.months)} months)." +
+               f"p = {num(i.diff_p, 3)}, {int(i.months)} months)." +
                ("" if sig else " A higher point estimate on a few dozen noisy monthly ICs is not evidence of a better signal."))
+    mom_t = mom_oos.ic_t
+    v["coincidence"] = ("" if round(mom_t, 2) != round(o.diff_p, 2) else
+        f"Note: momentum's OOS IC t-stat ({mom_t:.4f}) and this p-value ({o.diff_p:.4f}) round to the same two "
+        f"decimals by coincidence. The first tests whether momentum's mean IC differs from zero (one-sample t on "
+        f"the IC series). The second tests whether ML's IC differs from momentum's on the same months (paired "
+        f"t-test on the difference, t = {o.diff_t:.4f}). `tests/test_research.py` recomputes both from the "
+        f"monthly ICs.")
     return v
 
 
@@ -212,6 +239,11 @@ earlier data only. Costs are {s['cost_bps']:g} bp per side. Positions trade at t
 - {v['ts']}
 - {v['ml']}
 
+Sharpe ratios are on returns in excess of the 3-month T-bill. Idle cash earns the T-bill rate, and leverage
+is financed at it. The previous convention (cash earns 0%, Sharpe on raw returns) is shown alongside for comparison.
+
+{headline_table(r['perf'])}
+
 ![Cumulative returns](results/figures/cumulative_returns.png)
 
 ## Data
@@ -219,7 +251,7 @@ earlier data only. Costs are {s['cost_bps']:g} bp per side. Positions trade at t
 | Source | Series | Notes |
 |---|---|---|
 | yfinance | {s['n_assets']} ETFs, daily `Adj Close` and volume | `Adj Close` is split- **and** dividend-adjusted; every return uses it (enforced by `tests/test_return_basis.py`) |
-| FRED (pandas-datareader, no key) | DGS10, DGS2, T10Y2Y | lagged {config.MACRO_PUBLICATION_LAG_SESSIONS} session for publication; forward-filled at most {config.MACRO_FFILL_LIMIT_SESSIONS} sessions |
+| FRED (pandas-datareader, no key) | DGS10, DGS2, T10Y2Y, DTB3 (3M T-bill: risk-free rate, converted from discount to bond-equivalent yield) | lagged {config.MACRO_PUBLICATION_LAG_SESSIONS} session for publication; forward-filled at most {config.MACRO_FFILL_LIMIT_SESSIONS} sessions |
 
 Window: {s['data_start']} to {s['data_end']}. First signal {s['first_signal']} (after the longest look-back warms up).
 
@@ -268,7 +300,8 @@ leaky feature is included to prove the check can fail.
 
 {performance_table(r['perf'])}
 
-Sharpe ratios use a 0% risk-free rate (see Limitations). Max drawdown is measured within each period, so a
+Sharpe (excess) is on returns over the T-bill; Sharpe (0% rf, old) is the previous convention. Annual return
+includes interest on idle cash and the cost of financing leverage. Max drawdown is measured within each period, so a
 drawdown that spans the boundary is split; the chart below shows the continuous series. The ML strategy starts in {s['ml_first_test_year']}, after its first
 walk-forward training window.
 
@@ -294,6 +327,8 @@ after seeing hold-out results.
 {v['ml']}
 
 {ml_table(r['ml'])}
+
+{v['coincidence']}
 
 ## Robustness
 
@@ -341,8 +376,9 @@ Only {inv_months} months had an inverted curve, so these differences are not sta
   only {oos_n_months} months, during a strong bull market.
 - **Transaction costs are estimated**, as a flat per-side rate. There is no bid-ask modelling, market impact or
   borrow cost for shorts.
-- **Sharpe uses a 0% risk-free rate**, and idle cash earns 0%. This overstates long-only Sharpe relative to an
-  excess-return Sharpe; long/short books would also earn interest on collateral.
+- **Financing is idealized.** Cash and leverage both earn or pay exactly the T-bill rate. Real brokers charge
+  a spread over it, and shorting ETFs carries borrow fees, both of which would lower the levered and
+  long/short results.
 - **Selection bias.** The ETF list was chosen with hindsight; all of these funds survived.
 - **Single, unofficial data vendor** (yfinance), with no second source to cross-check prices.
 - **Past performance does not predict future results.**

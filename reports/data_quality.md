@@ -92,7 +92,7 @@ Included if first price <= 2007-12-31; a start after 2007-01-01 is kept as `incl
 | stage              | check                                                         |   expected |   actual | ok   |
 |:-------------------|:--------------------------------------------------------------|-----------:|---------:|:-----|
 | cache -> raw       | price rows (manifest vs raw.prices)                           |     119141 |   119141 | True |
-| cache -> raw       | macro rows (manifest vs raw.macro)                            |      15459 |    15459 | True |
+| cache -> raw       | macro rows (manifest vs raw.macro)                            |      20612 |    20612 | True |
 | raw -> clean       | clean rows = included raw rows + inserted missing sessions    |     119141 |   119141 | True |
 | raw -> clean       | macro_daily rows = NYSE sessions                              |       4967 |     4967 | True |
 | clean -> analysis  | view rows = clean rows - hard-rule exclusions (pandas vs SQL) |     119141 |   119141 | True |
@@ -236,6 +236,7 @@ _None._
 | DGS10       |   4941 |                0 | 2007-01-02   | 2026-09-30  |              0 |              4 |
 | DGS2        |   4941 |                0 | 2007-01-02   | 2026-09-30  |              0 |              4 |
 | T10Y2Y      |   4941 |                0 | 2007-01-02   | 2026-09-30  |              0 |              4 |
+| DTB3        |   4941 |                0 | 2007-01-02   | 2026-09-30  |              0 |              4 |
 
 Forward-fill rule: macro only, lagged 1 session(s) for publication, max 5 sessions; older values become NULL.
 
@@ -244,6 +245,7 @@ Forward-fill rule: macro only, lagged 1 session(s) for publication, max 5 sessio
 | dgs10    |       4967 |      1 |               36 |                0 |
 | dgs2     |       4967 |      1 |               36 |                0 |
 | t10y2y   |       4967 |      1 |               36 |                0 |
+| dtb3     |       4967 |      1 |               36 |                0 |
 
 Spread consistency: |T10Y2Y - (DGS10 - DGS2)| > 0.015 pp on 0 of 4941 days (max abs diff 0.0000). FRED derives T10Y2Y from the same H.15 inputs, so this checks internal consistency, not independent sources.
 
@@ -251,7 +253,7 @@ _None._
 
 ## 10. Analysis panel
 
-`analysis.panel` / `data/curated/panel.parquet`: 119,141 rows, 2007-01-03 to 2026-09-30, columns: `date`, `ticker`, `asset_class`, `adj_close`, `daily_return`, `volume`, `dgs10`, `dgs2`, `t10y2y`, `macro_ffilled`, `dq_soft_flags`.
+`analysis.panel` / `data/curated/panel.parquet`: 119,141 rows, 2007-01-03 to 2026-09-30, columns: `date`, `ticker`, `asset_class`, `adj_close`, `daily_return`, `volume`, `dgs10`, `dgs2`, `t10y2y`, `dtb3`, `macro_ffilled`, `dq_soft_flags`.
 
 | column        |   nulls |
 |:--------------|--------:|
@@ -264,5 +266,6 @@ _None._
 | dgs10         |      23 |
 | dgs2          |      23 |
 | t10y2y        |      23 |
+| dtb3          |      23 |
 | macro_ffilled |       0 |
 | dq_soft_flags |       0 |

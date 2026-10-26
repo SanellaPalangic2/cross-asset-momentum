@@ -242,9 +242,28 @@ portfolio trades every month because prices move.
 ## Metrics
 
 - **Annualized return** is geometric (CAGR). **Volatility and Sharpe** use
-  daily returns × √252. Sharpe uses a 0% risk-free rate because there's no
-  cash series in the data; this flatters long-only strategies a bit and is
-  listed as a limitation.
+  daily returns × √252.
+- **Sharpe is on excess returns over the 3-month T-bill (FRED DTB3).** An
+  earlier version used 0% and let cash earn nothing. Fixing it properly meant
+  changing the *engine*, not just subtracting a rate at the end:
+  - Idle cash (1 − Σw) earns the T-bill rate, and leverage (Σw > 1) pays it.
+    The excess return is then Σ wᵢ(rᵢ − rf): one definition that is right
+    for long-only, long/short and levered books alike.
+  - A dollar-neutral long/short book's Sharpe doesn't change, because its
+    collateral earns rf and rf cancels out. Subtracting rf from it again
+    would double-count, a common mistake.
+  - A fully invested long-only book's returns don't change, but its Sharpe
+    falls, because the hurdle is now the T-bill rate rather than zero.
+  - The vol-scaled trend book runs above 1x net long, mostly through
+    low-volatility bond ETFs like SHY, which themselves yield about the T-bill
+    rate. Under the 0% convention, that leverage was free, which manufactured
+    return. This was the biggest correction; the README shows both versions.
+  - DTB3 is quoted on a bank-discount basis, which understates the yield, so
+    it is converted to a bond-equivalent yield (365d / (360 − 91d)) before
+    being spread over 252 sessions. Like other macro series, it is lagged
+    one session for publication.
+  - Parameter selection now uses excess Sharpe. The chosen parameters did
+    not change (the README's grid tables show it).
 - **Max drawdown is measured within each period**, so a drawdown that spans
   the IS/OOS boundary is split. The drawdown chart shows the continuous
   series.

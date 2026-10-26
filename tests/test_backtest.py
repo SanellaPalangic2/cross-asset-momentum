@@ -107,3 +107,57 @@ def test_information_coefficient():
     assert ic.tolist() == pytest.approx([1.0, -1.0])
     s = ic_summary(pd.Series([0.1, 0.2, 0.3]))
     assert s["ic_t"] == pytest.approx(0.2 / 0.1 * np.sqrt(3))
+
+
+# ------------------------------------------------------------ risk-free rate
+
+RF = pd.Series(0.0002, index=D)   # 2bp per day, constant, so every case can be worked by hand
+
+
+def test_idle_cash_earns_the_risk_free_rate():
+    # 50% A, 50% cash. d2: .5 * .10 + .5 * .0002.
+    res = run_backtest(pd.DataFrame({"A": [0.5], "B": [0.0]}, index=[D[0]]), RETS, cost_bps=0, lag=1, rf=RF)
+    assert res.returns[D[2]] == pytest.approx(0.5 * 0.10 + 0.5 * 0.0002)
+
+
+def test_leverage_is_financed_at_the_risk_free_rate():
+    # 200% A, -100% cash: d2 = 2 * .10 - 1 * .0002.
+    res = run_backtest(pd.DataFrame({"A": [2.0], "B": [0.0]}, index=[D[0]]), RETS, cost_bps=0, lag=1, rf=RF)
+    assert res.returns[D[2]] == pytest.approx(2 * 0.10 - 0.0002)
+
+
+def test_dollar_neutral_excess_return_equals_the_spread():
+    # +1 A / -1 B: collateral earns rf, so excess return = spread = .10 - .05 on d2.
+    t = pd.DataFrame({"A": [1.0], "B": [-1.0]}, index=[D[0]])
+    with_rf = run_backtest(t, RETS, cost_bps=0, lag=1, rf=RF)
+    assert with_rf.returns[D[2]] - RF[D[2]] == pytest.approx(0.10 - 0.05)
+    assert run_backtest(t, RETS, cost_bps=0, lag=1).returns[D[2]] == pytest.approx(0.10 - 0.05)
+
+
+def test_sharpe_is_on_excess_returns():
+    idx = pd.bdate_range("2021-01-01", periods=252)
+    r = pd.Series(np.where(np.arange(252) % 2, -0.004, 0.006), index=idx)
+    rf = pd.Series(0.0003, index=idx)
+    res = run_backtest(pd.DataFrame({"X": [1.0]}, index=[idx[0]]), r.to_frame("X"), cost_bps=0, lag=0, rf=rf)
+    ex = res.returns - res.rf
+    assert metrics(res)["sharpe"] == pytest.approx(ex.mean() / ex.std() * np.sqrt(252))
+    # Fully invested: no cash, so the raw return is unchanged by rf, but Sharpe falls.
+    no_rf = run_backtest(pd.DataFrame({"X": [1.0]}, index=[idx[0]]), r.to_frame("X"), cost_bps=0, lag=0)
+    pd.testing.assert_series_equal(res.returns, no_rf.returns)
+    assert metrics(res)["sharpe"] < metrics(no_rf)["sharpe"]
+
+
+def test_missing_risk_free_rate_fails_loudly():
+    rf = RF.copy()
+    rf.iloc[3] = np.nan
+    with pytest.raises(ValueError, match="risk-free rate missing"):
+        run_backtest(pd.DataFrame({"A": [1.0]}, index=[D[0]]), RETS, lag=1, rf=rf)
+
+
+def test_tbill_discount_to_daily_rate():
+    from xasset.features import daily_rf_from_tbill
+    d = 0.05
+    bey = 365 * d / (360 - 91 * d)          # = 5.134%: a discount yield understates the return
+    daily = daily_rf_from_tbill(pd.Series([5.0])).iloc[0]
+    assert bey == pytest.approx(0.051343, abs=1e-6)
+    assert (1 + daily) ** 252 - 1 == pytest.approx(bey)

@@ -43,7 +43,8 @@ def in_sample_only(res: BacktestResult) -> BacktestResult:
     def cut(s):
         return s[s.index < OOS]
     return replace(res, returns=cut(res.returns), gross=cut(res.gross), costs=cut(res.costs),
-                   turnover=cut(res.turnover), weights=res.weights[res.weights.index < OOS])
+                   turnover=cut(res.turnover), weights=res.weights[res.weights.index < OOS],
+                   rf=None if res.rf is None else cut(res.rf))
 
 
 def select_on_is(results: dict) -> object:
@@ -80,12 +81,14 @@ def run() -> dict:
     first_sig = first_common_signal(all_dates, warm)
     dates = all_dates[all_dates >= first_sig]
     fwd, windows = forward_returns(P, dates)
+    rf = mkt.rf
+    assert rf.loc[dates[0]:].notna().all(), "risk-free rate has gaps inside the backtest window"
     log.info("signals %s .. %s (%d); OOS from %s", dates[0].date(), dates[-1].date(), len(dates), OOS.date())
 
     # ---------------------------------------------------------- parameter grids
-    xs_grid = {(lb, sk): run_backtest(xs_momentum_targets(momentum(P, lb, sk), dates), R)
+    xs_grid = {(lb, sk): run_backtest(xs_momentum_targets(momentum(P, lb, sk), dates), R, rf=rf)
                for lb, sk in config.XS_MOM_GRID}
-    ts_grid = {(ma, below): run_backtest(ts_trend_targets(trend(P, ma), feats["vol_60"], dates, below=below), R)
+    ts_grid = {(ma, below): run_backtest(ts_trend_targets(trend(P, ma), feats["vol_60"], dates, below=below), R, rf=rf)
                for ma in config.TREND_MA_GRID for below in config.TREND_BELOW_GRID}
     xs_key, ts_key = select_on_is(xs_grid), select_on_is(ts_grid)
     log.info("selected on IS: xs_mom=%s ts_trend=%s", xs_key, ts_key)
@@ -118,16 +121,21 @@ def run() -> dict:
     train_log.to_csv(config.RESULTS_DIR / "ml_training_log.csv", index=False)
     targets["ml_xs"] = xs_momentum_targets(pred, pred.index)
 
-    results = {k: run_backtest(t, R) for k, t in targets.items()}
+    results = {k: run_backtest(t, R, rf=rf) for k, t in targets.items()}
+    # The previous convention (cash earns 0%, Sharpe on raw returns), kept only for comparison.
+    results_rf0 = {k: run_backtest(t, R) for k, t in targets.items()}
 
     rows = []
     for k, res in results.items():
         for period, kw in [("in-sample", {"end": OOS}), ("out-of-sample", {"start": OOS}), ("full", {})]:
-            rows.append({"strategy": k, "label": STRATEGY_LABELS[k], "period": period, **metrics(res, **kw)})
+            old = metrics(results_rf0[k], **kw)
+            rows.append({"strategy": k, "label": STRATEGY_LABELS[k], "period": period, **metrics(res, **kw),
+                         "sharpe_rf0": old["sharpe"], "ann_return_rf0": old["ann_return"]})
     perf = pd.DataFrame(rows)
     perf.to_csv(config.RESULTS_DIR / "performance.csv", index=False)
 
     daily = pd.DataFrame({k: r.returns for k, r in results.items()})
+    daily["rf"] = rf.reindex(daily.index)
     daily.to_parquet(config.RESULTS_DIR / "daily_returns.parquet")
 
     # ------------------------------------------------------------------- IC
@@ -163,7 +171,7 @@ def run() -> dict:
     cost_rows = []
     for k in ("xs_mom", "ts_trend", "ew_rebal"):
         for bps in config.COST_SENSITIVITY_BPS:
-            res = run_backtest(targets[k], R, cost_bps=bps)
+            res = run_backtest(targets[k], R, cost_bps=bps, rf=rf)
             for period, kw in [("in-sample", {"end": OOS}), ("out-of-sample", {"start": OOS})]:
                 m = metrics(res, **kw)
                 cost_rows.append({"strategy": k, "cost_bps": bps, "period": period, "sharpe": m["sharpe"],
@@ -186,13 +194,14 @@ def run() -> dict:
     inv = feats["curve_inverted"].reindex(all_dates)
     reg_rows = []
     for k in ("xs_mom", "ts_trend", "ew_rebal"):
-        m = monthly_returns(daily[k].dropna())
+        r_k = daily[k].dropna()
+        m = monthly_returns(r_k) - monthly_returns(rf.reindex(r_k.index))   # monthly EXCESS return
         prev_inv = inv.groupby(inv.index.to_period("M")).last().shift(1).reindex(m.index)
         for state, mask in [("inverted", prev_inv == True), ("not inverted", prev_inv == False)]:  # noqa: E712
             x = m[mask]
             reg_rows.append({"strategy": k, "regime": state, "months": int(len(x)),
                              "oos_months": int((x.index.to_timestamp() >= OOS).sum()),
-                             "mean_monthly": float(x.mean()),
+                             "mean_monthly_excess": float(x.mean()),
                              "ann_sharpe": float(x.mean() / x.std() * np.sqrt(12)) if len(x) > 2 else np.nan,
                              "hit_rate": float((x > 0).mean())})
     pd.DataFrame(reg_rows).to_csv(config.RESULTS_DIR / "regime.csv", index=False)
@@ -202,7 +211,7 @@ def run() -> dict:
     for name, classes in config.SLEEVES.items():
         cols = mkt.asset_class.index[mkt.asset_class.isin(classes)]
         t = ts_trend_targets(trend_sel[cols], feats["vol_60"][cols], dates, below=ts_key[1])
-        sleeve[f"trend: {name}"] = run_backtest(t, R[cols]).returns
+        sleeve[f"trend: {name}"] = run_backtest(t, R[cols], rf=rf).returns
     corr_in = pd.concat([daily[["xs_mom", "ts_trend", "ew_rebal"]].rename(columns={
         "xs_mom": "XS momentum", "ts_trend": "TS trend", "ew_rebal": "Equal weight"}),
         pd.DataFrame(sleeve)], axis=1).dropna()
@@ -219,6 +228,12 @@ def run() -> dict:
         "selected": {"xs_mom": {"lookback_months": xs_key[0], "skip_months": xs_key[1]},
                      "ts_trend": {"ma_days": ts_key[0], "below": ts_key[1]}},
         "ml_first_test_year": int(train_log["test_year"].min()),
+        "rf_series": "FRED DTB3 (3M T-bill), bond-equivalent, publication-lagged 1 session",
+        "first_oos_signal": str(oos_sig[0].date()), "last_is_signal": str(is_sig[-1].date()),
+        "ts_trend_net_exposure": {
+            "in-sample": float(targets["ts_trend"].sum(axis=1)[targets["ts_trend"].index < OOS].mean()),
+            "out-of-sample": float(targets["ts_trend"].sum(axis=1)[targets["ts_trend"].index >= oos_sig[0]].mean()),
+        },
         "n_is_signals": int(len(is_sig)), "n_oos_signals": int(len(oos_sig)),
     }
     (config.RESULTS_DIR / "summary.json").write_text(json.dumps(summary, indent=2))

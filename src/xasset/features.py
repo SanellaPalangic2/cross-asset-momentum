@@ -27,6 +27,7 @@ class Market:
     returns: pd.DataFrame      # daily_return from adj_close
     t10y2y: pd.Series          # already lagged one session for publication in the pipeline
     asset_class: pd.Series     # ticker -> asset class
+    rf: pd.Series              # daily risk-free return from the 3M T-bill (0 if not in the panel)
 
 
 def load_market(path=None) -> Market:
@@ -40,7 +41,24 @@ def market_from_panel(panel: pd.DataFrame) -> Market:
     t10y2y = panel.groupby("date")["t10y2y"].first().sort_index()
     asset_class = panel.groupby("ticker")["asset_class"].first()
     cols = [t for t in config.UNIVERSE if t in prices.columns]
-    return Market(prices[cols], returns[cols], t10y2y, asset_class[cols])
+    if "dtb3" in panel:
+        rf = daily_rf_from_tbill(panel.groupby("date")["dtb3"].first().sort_index())
+    else:
+        rf = pd.Series(0.0, index=prices.index)
+    return Market(prices[cols], returns[cols], t10y2y, asset_class[cols], rf.reindex(prices.index))
+
+
+def daily_rf_from_tbill(discount_pct: pd.Series) -> pd.Series:
+    """3M T-bill quote (bank-discount %, as FRED DTB3) -> daily risk-free return per session.
+
+    A discount yield understates what a holder earns, so convert it to the
+    bond-equivalent yield first (91-day bill: BEY = 365 d / (360 - 91 d)), then
+    spread it evenly over 252 sessions. The value on session t is already
+    publication-lagged by the pipeline, so cash earns the rate known beforehand.
+    """
+    d = discount_pct / 100
+    bey = 365 * d / (360 - 91 * d)
+    return (1 + bey) ** (1 / config.TRADING_DAYS_PER_YEAR) - 1
 
 
 # ------------------------------------------------------------------ features

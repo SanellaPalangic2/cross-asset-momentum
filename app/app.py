@@ -46,7 +46,8 @@ oos = pd.Timestamp(s["oos_start"])
 
 st.title("Cross-asset momentum & trend")
 st.caption(f"{s['n_assets']} ETFs, {s['data_start']} to {s['data_end']}. Out-of-sample hold-out from {s['oos_start']} "
-           f"(never used for any choice). Costs {s['cost_bps']:g} bp per side. Sharpe uses a 0% risk-free rate. "
+           f"(never used for any choice). Costs {s['cost_bps']:g} bp per side. Sharpe is on returns in excess of the "
+           f"3-month T-bill; idle cash earns it and leverage pays it. "
            f"[Code and methodology]({REPO})")
 
 perf = d["perf"].assign(name=d["perf"]["strategy"].map(NAMES))
@@ -54,7 +55,7 @@ oos_perf = perf[perf["period"] == "out-of-sample"].set_index("strategy")
 is_perf = perf[perf["period"] == "in-sample"].set_index("strategy")
 cols = st.columns(4)
 for col, k in zip(cols, ["xs_mom", "ts_trend", "ew_rebal", "ml_xs"]):
-    col.metric(f"{NAMES[k]}: OOS Sharpe", f"{oos_perf.loc[k, 'sharpe']:.2f}",
+    col.metric(f"{NAMES[k]}: OOS Sharpe (excess)", f"{oos_perf.loc[k, 'sharpe']:.2f}",
                delta=f"{oos_perf.loc[k, 'sharpe'] - is_perf.loc[k, 'sharpe']:+.2f} vs in-sample",
                delta_color="off")
 
@@ -87,7 +88,9 @@ with tab_perf:
     st.dataframe(pd.DataFrame({
         "Strategy": t["name"], "From": t["start"], "To": t["end"],
         "Ann. return": t["ann_return"].map("{:.1%}".format), "Ann. vol": t["ann_vol"].map("{:.1%}".format),
-        "Sharpe": t["sharpe"].map("{:.2f}".format), "Max DD": t["max_drawdown"].map("{:.0%}".format),
+        "Sharpe (excess)": t["sharpe"].map("{:.2f}".format),
+        "Sharpe (0% rf, old)": t["sharpe_rf0"].map("{:.2f}".format),
+        "Max DD": t["max_drawdown"].map("{:.0%}".format),
         "Turnover/yr": t["turnover_per_year"].map("{:.1f}".format),
         "Hit rate": t["hit_rate_monthly"].map("{:.0%}".format)}), hide_index=True, width="stretch")
 
@@ -109,11 +112,11 @@ with tab_ic:
     st.dataframe(d["ml"].round(3), hide_index=True, width="stretch")
 
 with tab_robust:
-    st.subheader("Sharpe vs transaction cost")
+    st.subheader("Excess-return Sharpe vs transaction cost")
     c = d["cost"].assign(strategy=d["cost"]["strategy"].map(NAMES))
     c = c[c["strategy"].isin(picked)]
     st.altair_chart(alt.Chart(c).mark_line(point=alt.OverlayMarkDef(size=60), strokeWidth=2).encode(
-        x=alt.X("cost_bps:Q", title="cost per side (bp)"), y=alt.Y("sharpe:Q", title="Sharpe"),
+        x=alt.X("cost_bps:Q", title="cost per side (bp)"), y=alt.Y("sharpe:Q", title="Sharpe (excess)"),
         color=alt.Color("strategy:N", scale=COLOR_SCALE, legend=alt.Legend(orient="top", title=None)),
         column=alt.Column("period:N", title=None),
         tooltip=["strategy:N", "period:N", "cost_bps:Q", alt.Tooltip("sharpe:Q", format=".2f"),

@@ -19,6 +19,13 @@
     }
   },
   "ml_first_test_year": 2012,
+  "rf_series": "FRED DTB3 (3M T-bill), bond-equivalent, publication-lagged 1 session",
+  "first_oos_signal": "2023-09-29",
+  "last_is_signal": "2023-07-31",
+  "ts_trend_net_exposure": {
+    "in-sample": 1.2417768829191984,
+    "out-of-sample": 1.4488197903796087
+  },
   "n_is_signals": 187,
   "n_oos_signals": 35
 }

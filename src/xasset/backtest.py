@@ -5,7 +5,12 @@ Engine conventions (each is tested on a hand-checked toy in tests/test_backtest.
 - The trade executes at the close of s + lag (config.EXECUTION_LAG_SESSIONS),
   so new weights first earn the return of session s + lag + 1.
 - Between trades, weights drift with prices: w_i <- w_i (1 + r_i) / (1 + r_p).
-  Unallocated capital is cash earning 0%.
+- Unallocated capital (1 - sum w) earns the risk-free rate; if sum w > 1, the
+  excess is financed at that rate. A dollar-neutral long/short book therefore
+  earns rf on its collateral, and its excess return is just the spread.
+- Sharpe is computed on EXCESS returns (portfolio return - rf), which equals
+  sum_i w_i (r_i - rf), the same definition for long-only, long/short and
+  levered books.
 - Cost on a trade day = bps * sum_i |target_i - drifted_i|, i.e. a per-side
   rate on traded notional, charged against that day's return.
 - Turnover is reported as sum |delta w| (buys + sells) per year.
@@ -30,12 +35,17 @@ class BacktestResult:
     costs: pd.Series          # daily cost drag
     turnover: pd.Series       # sum |dw| on each trade date
     weights: pd.DataFrame     # post-trade weights on each trade date
+    rf: pd.Series | None = None  # daily risk-free return the cash earned (None = 0%)
 
 
 def run_backtest(targets: pd.DataFrame, returns: pd.DataFrame,
                  cost_bps: float = config.COST_BPS_PER_SIDE,
-                 lag: int = config.EXECUTION_LAG_SESSIONS) -> BacktestResult:
-    """Simulate holding `targets` (signal date x ticker) over daily `returns`."""
+                 lag: int = config.EXECUTION_LAG_SESSIONS,
+                 rf: pd.Series | None = None) -> BacktestResult:
+    """Simulate holding `targets` (signal date x ticker) over daily `returns`.
+
+    rf: daily risk-free return earned by cash. None means 0% (the old convention).
+    """
     targets = targets.reindex(columns=returns.columns).fillna(0.0)
     idx = returns.index
     trade_pos = idx.get_indexer(targets.index) + lag
@@ -47,16 +57,20 @@ def run_backtest(targets: pd.DataFrame, returns: pd.DataFrame,
 
     r = returns.to_numpy(dtype=float)
     r = np.where(np.isnan(r), 0.0, r)  # a held asset with no price that day contributes 0
+    rf_arr = (np.zeros(len(idx)) if rf is None
+              else rf.reindex(idx).to_numpy(dtype=float))
     c = cost_bps / 1e4
     n = len(idx)
     w = np.zeros(r.shape[1])
     gross, cost = np.zeros(n), np.zeros(n)
     to_dates, to_vals, w_rows = [], [], []
     for i in range(first, n):
-        rp = w @ r[i]                       # earned on weights held coming into day i
+        if np.isnan(rf_arr[i]):
+            raise ValueError(f"risk-free rate missing on {idx[i].date()}")
+        rp = w @ r[i] + (1 - w.sum()) * rf_arr[i]   # assets + cash (or financing) for day i
         gross[i] = rp
         if rp > -1:
-            w = w * (1 + r[i]) / (1 + rp)   # drift to end-of-day weights
+            w = w * (1 + r[i]) / (1 + rp)   # drift to end-of-day weights (cash absorbs the rest)
         if i in trades:                     # trade at today's close
             tgt = trades[i]
             to = np.abs(tgt - w).sum()
@@ -73,7 +87,8 @@ def run_backtest(targets: pd.DataFrame, returns: pd.DataFrame,
     to_index = pd.DatetimeIndex([idx[first + 1] if d == idx[first] else d for d in to_dates])
     return BacktestResult(returns=gross_s - cost_s, gross=gross_s, costs=cost_s,
                           turnover=pd.Series(to_vals, index=to_index),
-                          weights=pd.DataFrame(w_rows, index=pd.DatetimeIndex(to_dates), columns=returns.columns))
+                          weights=pd.DataFrame(w_rows, index=pd.DatetimeIndex(to_dates), columns=returns.columns),
+                          rf=pd.Series(rf_arr[sl], index=idx[sl]))
 
 
 # ---------------------------------------------------------------- strategies
@@ -141,7 +156,7 @@ def monthly_returns(returns: pd.Series) -> pd.Series:
 
 
 def metrics(res: BacktestResult, start=None, end=None) -> dict:
-    """Performance over [start, end). Sharpe uses a 0% risk-free rate (see DECISIONS.md)."""
+    """Performance over [start, end). Sharpe is on excess returns over res.rf (0% if None)."""
     r = res.returns
     if start is not None:
         r = r[r.index >= pd.Timestamp(start)]
@@ -152,12 +167,15 @@ def metrics(res: BacktestResult, start=None, end=None) -> dict:
     years = len(r) / DPY
     to = res.turnover[(res.turnover.index >= r.index[0]) & (res.turnover.index <= r.index[-1])]
     m = monthly_returns(r)
-    sd = r.std()
+    rf = res.rf.reindex(r.index).fillna(0.0) if res.rf is not None else pd.Series(0.0, index=r.index)
+    ex = r - rf
+    sd, sd_ex = r.std(), ex.std()
     return {
         "start": r.index[0].date().isoformat(), "end": r.index[-1].date().isoformat(),
         "ann_return": float((1 + r).prod() ** (1 / years) - 1),
         "ann_vol": float(sd * np.sqrt(DPY)),
-        "sharpe": float(r.mean() / sd * np.sqrt(DPY)) if sd > 0 else np.nan,
+        "sharpe": float(ex.mean() / sd_ex * np.sqrt(DPY)) if sd_ex > 0 else np.nan,
+        "rf_ann": float((1 + rf).prod() ** (1 / years) - 1),
         "max_drawdown": max_drawdown(r),
         "turnover_per_year": float(to.sum() / years),
         "hit_rate_monthly": float((m > 0).mean()),
