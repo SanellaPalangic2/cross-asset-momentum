@@ -93,7 +93,7 @@ def apply_rules(raw: pd.DataFrame, end: str = config.END_DATE) -> dict[str, pd.D
     u = df.loc[usable, ["ticker", "date", "adj_close", "close", "volume"]].copy()
     g = u.groupby("ticker")
     u["daily_return"] = g["adj_close"].pct_change(fill_method=None)
-    u["close_return"] = g["close"].pct_change(fill_method=None)   # split- but not dividend-adjusted
+    u["split_only_return"] = g["close"].pct_change(fill_method=None)   # split- but not dividend-adjusted
     u["prev_date"] = g["date"].shift(1)
 
     # Gap: the previous usable price is not from the immediately preceding session,
@@ -114,7 +114,7 @@ def apply_rules(raw: pd.DataFrame, end: str = config.END_DATE) -> dict[str, pd.D
     u["flag_stale_price"] = u["stale_run_length"].ge(config.STALE_RUN_SESSIONS)
     u["flag_zero_volume"] = u["volume"].eq(0)
 
-    cols = ["daily_return", "close_return", "robust_z", "stale_run_length", "stale_run_start",
+    cols = ["daily_return", "split_only_return", "robust_z", "stale_run_length", "stale_run_start",
             "flag_return_spans_gap", "flag_extreme_return", "flag_stale_price", "flag_zero_volume"]
     df = df.join(u[cols])
     for c in cols:

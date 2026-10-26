@@ -54,12 +54,12 @@ def write_report(*, universe, counts, recon, per_ticker, clean, coverage, macro,
     n_fail = int((~recon["ok"]).sum())
 
     extreme = clean.loc[clean["flag_extreme_return"],
-                        ["date", "ticker", "asset_class", "daily_return", "close_return", "robust_z",
+                        ["date", "ticker", "asset_class", "daily_return", "split_only_return", "robust_z",
                          "flag_return_spans_gap"]]
     extreme = extreme.reindex(extreme["daily_return"].abs().sort_values(ascending=False).index)
     # Close is split-adjusted only; a big gap vs Adj Close = a large distribution that day.
-    corp = clean.loc[(clean["close_return"] - clean["daily_return"]).abs() > 0.05,
-                     ["date", "ticker", "close_return", "daily_return"]]
+    corp = clean.loc[(clean["split_only_return"] - clean["daily_return"]).abs() > 0.05,
+                     ["date", "ticker", "split_only_return", "daily_return"]]
     missing = (clean[clean["flag_missing_session"]].groupby("ticker")["date"]
                .agg(missing_sessions="size", first="min", last="max").reset_index())
     partial = coverage[coverage["missing_tickers"] > 0].copy()
@@ -126,7 +126,7 @@ def write_report(*, universe, counts, recon, per_ticker, clean, coverage, macro,
         "",
         "## 5. Extreme returns (inspect each one)",
         "",
-        "`daily_return` uses Adj Close (split + dividend adjusted). `close_return` uses yfinance `Close`, which is "
+        "`daily_return` uses Adj Close (split + dividend adjusted). `split_only_return` uses yfinance `Close`, which is "
         "split-adjusted but NOT dividend-adjusted, so a large gap between them marks a distribution.",
         "",
         _md(extreme, max_rows=60),

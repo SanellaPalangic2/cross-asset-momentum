@@ -1,6 +1,6 @@
 # Data Quality Report
 
-Generated 2026-10-26 23:07 UTC by `python -m xasset.pipeline`. Do not edit by hand; rerun the pipeline.
+Generated 2026-10-26 23:13 UTC by `python -m xasset.pipeline`. Do not edit by hand; rerun the pipeline.
 
 ## Summary
 
@@ -50,7 +50,7 @@ Included if first price <= 2007-12-31; a start after 2007-01-01 is kept as `incl
 | flag_missing_price         | hard (excluded)      |              0 | Raw row with NULL close or adjusted close.                                                               |
 | flag_nonpositive_price     | hard (excluded)      |              0 | Close or adjusted close <= 0.                                                                            |
 | flag_missing_session       | soft (kept, flagged) |              0 | NYSE session inside the ticker's active range with no raw row. Inserted with NULL prices; never filled.  |
-| flag_stale_price           | soft (kept, flagged) |             15 | Unadjusted close unchanged for >= 5 consecutive usable sessions (all rows of the run).                   |
+| flag_stale_price           | soft (kept, flagged) |             15 | Close (split-adjusted) unchanged for >= 5 consecutive usable sessions (all rows of the run).             |
 | flag_zero_volume           | soft (kept, flagged) |              0 | Reported volume is exactly 0.                                                                            |
 | flag_extreme_return        | soft (kept, flagged) |            247 | |daily return| > 15%, or > 8 robust sigmas (1.4826 x MAD over the prior 252 returns; past data only).    |
 | flag_return_spans_gap      | soft (kept, flagged) |              0 | The previous usable price is older than the previous session, so the 'daily' return covers several days. |
@@ -134,78 +134,78 @@ Per-ticker checks: 48 / 48 passed.
 
 ## 5. Extreme returns (inspect each one)
 
-`daily_return` uses Adj Close (split + dividend adjusted). `close_return` uses yfinance `Close`, which is split-adjusted but NOT dividend-adjusted, so a large gap between them marks a distribution.
+`daily_return` uses Adj Close (split + dividend adjusted). `split_only_return` uses yfinance `Close`, which is split-adjusted but NOT dividend-adjusted, so a large gap between them marks a distribution.
 
-| date       | ticker   | asset_class   |   daily_return |   close_return |   robust_z | flag_return_spans_gap   |
-|:-----------|:---------|:--------------|---------------:|---------------:|-----------:|:------------------------|
-| 2026-01-30 | SLV      | commodity     |        -0.2854 |        -0.2854 |   -16.7328 | False                   |
-| 2020-03-09 | USO      | commodity     |        -0.2532 |        -0.2532 |   -17.8839 | False                   |
-| 2020-04-21 | USO      | commodity     |        -0.2507 |        -0.2507 |   -13.3439 | False                   |
-| 2008-10-13 | EEM      | equity_intl   |         0.2277 |         0.2277 |    10.2829 | False                   |
-| 2008-10-28 | EEM      | equity_intl   |         0.2093 |         0.2093 |     8.8675 | False                   |
-| 2020-03-09 | XLE      | equity_sector |        -0.2014 |        -0.2014 |   -17.0699 | False                   |
-| 2008-12-01 | VNQ      | real_estate   |        -0.1951 |        -0.1951 |    -7.3297 | False                   |
-| 2008-10-10 | SLV      | commodity     |        -0.1799 |        -0.1799 |    -7.8718 | False                   |
-| 2020-03-16 | VNQ      | real_estate   |        -0.1773 |        -0.1773 |   -23.9734 | False                   |
-| 2020-03-18 | USO      | commodity     |        -0.1751 |        -0.1751 |   -11.2490 | False                   |
-| 2008-11-24 | VNQ      | real_estate   |         0.1701 |         0.1701 |     6.6344 | False                   |
-| 2020-04-02 | USO      | commodity     |         0.1667 |         0.1667 |    10.2803 | False                   |
-| 2008-12-01 | XLF      | equity_sector |        -0.1667 |        -0.1667 |    -5.1142 | False                   |
-| 2009-01-20 | XLF      | equity_sector |        -0.1653 |        -0.1653 |    -4.5981 | False                   |
-| 2008-10-13 | XLE      | equity_sector |         0.1647 |         0.1647 |     6.5168 | False                   |
-| 2009-03-23 | XLF      | equity_sector |         0.1646 |         0.1646 |     4.4817 | False                   |
-| 2009-03-23 | VNQ      | real_estate   |         0.1617 |         0.1617 |     4.7936 | False                   |
-| 2008-10-15 | EEM      | equity_intl   |        -0.1617 |        -0.1617 |    -7.2474 | False                   |
-| 2020-03-24 | XLE      | equity_sector |         0.1604 |         0.1604 |    13.1117 | False                   |
-| 2008-10-13 | EFA      | equity_intl   |         0.1589 |         0.1589 |    11.3285 | False                   |
-| 2026-02-05 | SLV      | commodity     |        -0.1577 |        -0.1577 |    -9.1179 | False                   |
-| 2008-10-28 | XLF      | equity_sector |         0.1571 |         0.1571 |     5.8181 | False                   |
-| 2008-10-28 | VNQ      | real_estate   |         0.1564 |         0.1564 |     6.6084 | False                   |
-| 2009-04-09 | XLF      | equity_sector |         0.1554 |         0.1554 |     4.1084 | False                   |
-| 2020-04-03 | USO      | commodity     |         0.1546 |         0.1546 |     9.4261 | False                   |
-| 2008-10-28 | XLE      | equity_sector |         0.1525 |         0.1525 |     5.5528 | False                   |
-| 2008-11-24 | XLF      | equity_sector |         0.1519 |         0.1519 |     5.0638 | False                   |
-| 2008-10-13 | SPY      | equity_broad  |         0.1452 |         0.1452 |    10.8944 | False                   |
-| 2020-03-18 | XLE      | equity_sector |        -0.1436 |        -0.1436 |   -11.8302 | False                   |
-| 2020-03-19 | USO      | commodity     |         0.1401 |         0.1401 |     8.8419 | False                   |
-| 2008-10-28 | XLK      | equity_sector |         0.1390 |         0.1390 |     9.1212 | False                   |
-| 2020-03-16 | XLK      | equity_sector |        -0.1381 |        -0.1381 |   -13.9761 | False                   |
-| 2008-10-28 | EFA      | equity_intl   |         0.1378 |         0.1378 |     9.7007 | False                   |
-| 2020-03-16 | XLF      | equity_sector |        -0.1371 |        -0.1371 |   -15.6514 | False                   |
-| 2020-03-16 | XLE      | equity_sector |        -0.1361 |        -0.1361 |   -11.2147 | False                   |
-| 2020-08-11 | SLV      | commodity     |        -0.1359 |        -0.1359 |    -9.7265 | False                   |
-| 2025-04-09 | XLK      | equity_sector |         0.1343 |         0.1343 |    10.0661 | False                   |
-| 2020-03-16 | IWM      | equity_broad  |        -0.1327 |        -0.1327 |   -14.8464 | False                   |
-| 2020-03-13 | XLF      | equity_sector |         0.1316 |         0.1316 |    14.9042 | False                   |
-| 2020-03-16 | USO      | commodity     |        -0.1307 |        -0.1307 |    -8.7145 | False                   |
-| 2020-03-17 | XLU      | equity_sector |         0.1279 |         0.1279 |    18.7591 | False                   |
-| 2020-03-16 | XLY      | equity_sector |        -0.1267 |        -0.1267 |   -16.0458 | False                   |
-| 2020-03-24 | XLI      | equity_sector |         0.1265 |         0.1265 |    14.9735 | False                   |
-| 2013-04-15 | SLV      | commodity     |        -0.1262 |        -0.1262 |   -10.4670 | False                   |
-| 2020-03-16 | EEM      | equity_intl   |        -0.1248 |        -0.1248 |   -13.1873 | False                   |
-| 2020-03-12 | XLE      | equity_sector |        -0.1247 |        -0.1247 |   -10.4216 | False                   |
-| 2020-03-24 | XLF      | equity_sector |         0.1240 |         0.1240 |    13.8445 | False                   |
-| 2020-03-16 | SLV      | commodity     |        -0.1234 |        -0.1234 |   -12.9170 | False                   |
-| 2008-10-13 | HYG      | credit        |         0.1227 |         0.1227 |    26.7315 | False                   |
-| 2008-10-13 | XLU      | equity_sector |         0.1207 |         0.1207 |     9.3927 | False                   |
-| 2008-10-13 | XLV      | equity_sector |         0.1205 |         0.1205 |    12.2445 | False                   |
-| 2020-03-24 | XLB      | equity_sector |         0.1176 |         0.1176 |    12.7279 | False                   |
-| 2020-03-13 | XLK      | equity_sector |         0.1173 |         0.1173 |    11.5565 | False                   |
-| 2008-10-13 | XLK      | equity_sector |         0.1170 |         0.1170 |     8.2522 | False                   |
-| 2008-10-28 | SPY      | equity_broad  |         0.1169 |         0.1169 |     8.1775 | False                   |
-| 2020-03-16 | XLU      | equity_sector |        -0.1136 |        -0.1136 |   -17.3073 | False                   |
-| 2020-03-16 | XLI      | equity_sector |        -0.1134 |        -0.1134 |   -13.6448 | False                   |
-| 2008-09-17 | GLD      | commodity     |         0.1129 |         0.1129 |     8.0528 | False                   |
-| 2008-09-29 | EFA      | equity_intl   |        -0.1116 |        -0.1116 |    -8.3937 | False                   |
-| 2020-03-12 | IWM      | equity_broad  |        -0.1105 |        -0.1105 |   -12.5528 | False                   |
+| date       | ticker   | asset_class   |   daily_return |   split_only_return |   robust_z | flag_return_spans_gap   |
+|:-----------|:---------|:--------------|---------------:|--------------------:|-----------:|:------------------------|
+| 2026-01-30 | SLV      | commodity     |        -0.2854 |             -0.2854 |   -16.7328 | False                   |
+| 2020-03-09 | USO      | commodity     |        -0.2532 |             -0.2532 |   -17.8839 | False                   |
+| 2020-04-21 | USO      | commodity     |        -0.2507 |             -0.2507 |   -13.3439 | False                   |
+| 2008-10-13 | EEM      | equity_intl   |         0.2277 |              0.2277 |    10.2829 | False                   |
+| 2008-10-28 | EEM      | equity_intl   |         0.2093 |              0.2093 |     8.8675 | False                   |
+| 2020-03-09 | XLE      | equity_sector |        -0.2014 |             -0.2014 |   -17.0699 | False                   |
+| 2008-12-01 | VNQ      | real_estate   |        -0.1951 |             -0.1951 |    -7.3297 | False                   |
+| 2008-10-10 | SLV      | commodity     |        -0.1799 |             -0.1799 |    -7.8718 | False                   |
+| 2020-03-16 | VNQ      | real_estate   |        -0.1773 |             -0.1773 |   -23.9734 | False                   |
+| 2020-03-18 | USO      | commodity     |        -0.1751 |             -0.1751 |   -11.2490 | False                   |
+| 2008-11-24 | VNQ      | real_estate   |         0.1701 |              0.1701 |     6.6344 | False                   |
+| 2020-04-02 | USO      | commodity     |         0.1667 |              0.1667 |    10.2803 | False                   |
+| 2008-12-01 | XLF      | equity_sector |        -0.1667 |             -0.1667 |    -5.1142 | False                   |
+| 2009-01-20 | XLF      | equity_sector |        -0.1653 |             -0.1653 |    -4.5981 | False                   |
+| 2008-10-13 | XLE      | equity_sector |         0.1647 |              0.1647 |     6.5168 | False                   |
+| 2009-03-23 | XLF      | equity_sector |         0.1646 |              0.1646 |     4.4817 | False                   |
+| 2009-03-23 | VNQ      | real_estate   |         0.1617 |              0.1617 |     4.7936 | False                   |
+| 2008-10-15 | EEM      | equity_intl   |        -0.1617 |             -0.1617 |    -7.2474 | False                   |
+| 2020-03-24 | XLE      | equity_sector |         0.1604 |              0.1604 |    13.1117 | False                   |
+| 2008-10-13 | EFA      | equity_intl   |         0.1589 |              0.1589 |    11.3285 | False                   |
+| 2026-02-05 | SLV      | commodity     |        -0.1577 |             -0.1577 |    -9.1179 | False                   |
+| 2008-10-28 | XLF      | equity_sector |         0.1571 |              0.1571 |     5.8181 | False                   |
+| 2008-10-28 | VNQ      | real_estate   |         0.1564 |              0.1564 |     6.6084 | False                   |
+| 2009-04-09 | XLF      | equity_sector |         0.1554 |              0.1554 |     4.1084 | False                   |
+| 2020-04-03 | USO      | commodity     |         0.1546 |              0.1546 |     9.4261 | False                   |
+| 2008-10-28 | XLE      | equity_sector |         0.1525 |              0.1525 |     5.5528 | False                   |
+| 2008-11-24 | XLF      | equity_sector |         0.1519 |              0.1519 |     5.0638 | False                   |
+| 2008-10-13 | SPY      | equity_broad  |         0.1452 |              0.1452 |    10.8944 | False                   |
+| 2020-03-18 | XLE      | equity_sector |        -0.1436 |             -0.1436 |   -11.8302 | False                   |
+| 2020-03-19 | USO      | commodity     |         0.1401 |              0.1401 |     8.8419 | False                   |
+| 2008-10-28 | XLK      | equity_sector |         0.1390 |              0.1390 |     9.1212 | False                   |
+| 2020-03-16 | XLK      | equity_sector |        -0.1381 |             -0.1381 |   -13.9761 | False                   |
+| 2008-10-28 | EFA      | equity_intl   |         0.1378 |              0.1378 |     9.7007 | False                   |
+| 2020-03-16 | XLF      | equity_sector |        -0.1371 |             -0.1371 |   -15.6514 | False                   |
+| 2020-03-16 | XLE      | equity_sector |        -0.1361 |             -0.1361 |   -11.2147 | False                   |
+| 2020-08-11 | SLV      | commodity     |        -0.1359 |             -0.1359 |    -9.7265 | False                   |
+| 2025-04-09 | XLK      | equity_sector |         0.1343 |              0.1343 |    10.0661 | False                   |
+| 2020-03-16 | IWM      | equity_broad  |        -0.1327 |             -0.1327 |   -14.8464 | False                   |
+| 2020-03-13 | XLF      | equity_sector |         0.1316 |              0.1316 |    14.9042 | False                   |
+| 2020-03-16 | USO      | commodity     |        -0.1307 |             -0.1307 |    -8.7145 | False                   |
+| 2020-03-17 | XLU      | equity_sector |         0.1279 |              0.1279 |    18.7591 | False                   |
+| 2020-03-16 | XLY      | equity_sector |        -0.1267 |             -0.1267 |   -16.0458 | False                   |
+| 2020-03-24 | XLI      | equity_sector |         0.1265 |              0.1265 |    14.9735 | False                   |
+| 2013-04-15 | SLV      | commodity     |        -0.1262 |             -0.1262 |   -10.4670 | False                   |
+| 2020-03-16 | EEM      | equity_intl   |        -0.1248 |             -0.1248 |   -13.1873 | False                   |
+| 2020-03-12 | XLE      | equity_sector |        -0.1247 |             -0.1247 |   -10.4216 | False                   |
+| 2020-03-24 | XLF      | equity_sector |         0.1240 |              0.1240 |    13.8445 | False                   |
+| 2020-03-16 | SLV      | commodity     |        -0.1234 |             -0.1234 |   -12.9170 | False                   |
+| 2008-10-13 | HYG      | credit        |         0.1227 |              0.1227 |    26.7315 | False                   |
+| 2008-10-13 | XLU      | equity_sector |         0.1207 |              0.1207 |     9.3927 | False                   |
+| 2008-10-13 | XLV      | equity_sector |         0.1205 |              0.1205 |    12.2445 | False                   |
+| 2020-03-24 | XLB      | equity_sector |         0.1176 |              0.1176 |    12.7279 | False                   |
+| 2020-03-13 | XLK      | equity_sector |         0.1173 |              0.1173 |    11.5565 | False                   |
+| 2008-10-13 | XLK      | equity_sector |         0.1170 |              0.1170 |     8.2522 | False                   |
+| 2008-10-28 | SPY      | equity_broad  |         0.1169 |              0.1169 |     8.1775 | False                   |
+| 2020-03-16 | XLU      | equity_sector |        -0.1136 |             -0.1136 |   -17.3073 | False                   |
+| 2020-03-16 | XLI      | equity_sector |        -0.1134 |             -0.1134 |   -13.6448 | False                   |
+| 2008-09-17 | GLD      | commodity     |         0.1129 |              0.1129 |     8.0528 | False                   |
+| 2008-09-29 | EFA      | equity_intl   |        -0.1116 |             -0.1116 |    -8.3937 | False                   |
+| 2020-03-12 | IWM      | equity_broad  |        -0.1105 |             -0.1105 |   -12.5528 | False                   |
 
 _Showing 60 of 247 rows; query DuckDB for the rest._
 
 ### Days where Close and Adj Close returns differ by > 5pp (large distributions)
 
-| date       | ticker   |   close_return |   daily_return |
-|:-----------|:---------|---------------:|---------------:|
-| 2024-12-23 | DBC      |        -0.0500 |         0.0008 |
+| date       | ticker   |   split_only_return |   daily_return |
+|:-----------|:---------|--------------------:|---------------:|
+| 2024-12-23 | DBC      |             -0.0500 |         0.0008 |
 
 ## 6. Stale-price runs
 

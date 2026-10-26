@@ -41,6 +41,28 @@ behavior visible instead of surprising someone later.
   +0.1%). USO's 1:8 reverse split in April 2020 leaves no trace in either
   series, which confirms the split adjustment worked.
 
+**Rule: every research return uses Adj Close.** For income-paying funds, the
+gap is most of the return. Full period, annualized, first to last price:
+
+| | Adj Close (total return) | Close (split-only) | Gap |
+|---|---|---|---|
+| TLT (2007-01 to 2026-09) | +2.47%/yr | -0.68%/yr | 3.15 pp/yr |
+| HYG (2007-04 to 2026-09) | +4.76%/yr | -1.54%/yr | 6.29 pp/yr |
+
+On Close, both bond funds *lost* money; on a total-return basis, both made
+money. A backtest on Close would badly understate bonds and credit relative to
+equities and gold (GLD pays nothing), which biases any cross-asset comparison.
+
+How it is enforced (`tests/test_return_basis.py`):
+- `analysis.panel`, the only input for research code, has no `close` column.
+- A static (AST) scan fails if any module outside ingest/quality/report
+  references `close`, or if code inside them computes a return from `close`
+  under any name other than the labelled diagnostic `split_only_return`.
+- A synthetic ex-dividend day checks that `daily_return` is 0% when Close falls
+  by the dividend.
+- The real panel is checked: `daily_return == adj_close.pct_change()`.
+- Verified by mutation: switching `daily_return` to `close` fails two tests.
+
 ## Universe
 
 HYG starts 2007-04-11; every other ticker has full 2007 coverage. Rule: keep a
