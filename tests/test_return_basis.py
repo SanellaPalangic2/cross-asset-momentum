@@ -28,7 +28,7 @@ from xasset.curate import align_macro
 from xasset.quality import apply_rules
 from xasset.warehouse import create_analysis_view, replace_table
 
-PKG = Path(__file__).resolve().parents[1] / "xasset"
+PKG = Path(__file__).resolve().parents[1] / "src" / "xasset"
 
 # Modules allowed to reference `close`, and why.
 CLOSE_ALLOWLIST = {

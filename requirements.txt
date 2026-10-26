@@ -1,10 +1,14 @@
 duckdb==2.0.0
 exchange_calendars==4.13.2
+matplotlib==3.11.2
 numpy==2.5.4
 pandas==3.1.0
 pandas-datareader==0.11.1
 pyarrow==26.0.0
 pytest==9.1.1
+scikit-learn==1.9.1
+scipy==1.18.1
 setuptools==84.2.1  # pandas-datareader still imports distutils, removed from Python 3.12+
+streamlit==1.66.1
 tabulate==0.10.0
 yfinance==1.7.0

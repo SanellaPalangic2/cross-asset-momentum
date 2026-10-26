@@ -1,7 +1,7 @@
 """Central configuration. Every tunable choice lives here so it can be cited and changed in one place."""
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "data"
 RAW_CACHE_DIR = DATA_DIR / "raw"          # immutable API downloads (parquet + manifest)
 CURATED_DIR = DATA_DIR / "curated"        # exported analysis-ready panel
