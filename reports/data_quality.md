@@ -1,0 +1,268 @@
+# Data Quality Report
+
+Generated 2026-10-26 23:07 UTC by `python -m xasset.pipeline`. Do not edit by hand; rerun the pipeline.
+
+## Summary
+
+- Window: 2007-01-01 to 2026-09-30 (NYSE calendar via `exchange_calendars`).
+- Universe: 24 tickers requested; 23 included, 1 included_late_start.
+- Clean rows: 119,141. Analysis-panel rows: 119,141.
+- Reconciliation: 55 / 55 checks passed.
+- Policy: rows are flagged, never deleted. Hard rules exclude a row from `analysis.panel`; soft rules keep it and list the rule in `dq_soft_flags`. Prices are never filled.
+
+## 1. Universe screen
+
+Included if first price <= 2007-12-31; a start after 2007-01-01 is kept as `included_late_start`.
+
+| ticker   | asset_class   | first_date   | last_date   |   raw_rows | status              |
+|:---------|:--------------|:-------------|:------------|-----------:|:--------------------|
+| XLB      | equity_sector | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| XLE      | equity_sector | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| XLF      | equity_sector | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| XLI      | equity_sector | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| XLK      | equity_sector | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| XLP      | equity_sector | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| XLU      | equity_sector | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| XLV      | equity_sector | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| XLY      | equity_sector | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| SPY      | equity_broad  | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| IWM      | equity_broad  | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| EFA      | equity_intl   | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| EEM      | equity_intl   | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| SHY      | treasury      | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| IEF      | treasury      | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| TLT      | treasury      | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| LQD      | credit        | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| HYG      | credit        | 2007-04-11   | 2026-09-30  |       4900 | included_late_start |
+| TIP      | tips          | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| VNQ      | real_estate   | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| GLD      | commodity     | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| SLV      | commodity     | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| DBC      | commodity     | 2007-01-03   | 2026-09-30  |       4967 | included            |
+| USO      | commodity     | 2007-01-03   | 2026-09-30  |       4967 | included            |
+
+## 2. Rules and totals
+
+| rule                       | type                 |   rows_flagged | definition                                                                                               |
+|:---------------------------|:---------------------|---------------:|:---------------------------------------------------------------------------------------------------------|
+| flag_duplicate_date        | hard (excluded)      |              0 | More than one raw row for (ticker, date). All copies flagged; copies after the first excluded.           |
+| flag_off_calendar          | hard (excluded)      |              0 | Row dated on a day that is not an NYSE session (weekend, holiday).                                       |
+| flag_missing_price         | hard (excluded)      |              0 | Raw row with NULL close or adjusted close.                                                               |
+| flag_nonpositive_price     | hard (excluded)      |              0 | Close or adjusted close <= 0.                                                                            |
+| flag_missing_session       | soft (kept, flagged) |              0 | NYSE session inside the ticker's active range with no raw row. Inserted with NULL prices; never filled.  |
+| flag_stale_price           | soft (kept, flagged) |             15 | Unadjusted close unchanged for >= 5 consecutive usable sessions (all rows of the run).                   |
+| flag_zero_volume           | soft (kept, flagged) |              0 | Reported volume is exactly 0.                                                                            |
+| flag_extreme_return        | soft (kept, flagged) |            247 | |daily return| > 15%, or > 8 robust sigmas (1.4826 x MAD over the prior 252 returns; past data only).    |
+| flag_return_spans_gap      | soft (kept, flagged) |              0 | The previous usable price is older than the previous session, so the 'daily' return covers several days. |
+| flag_partial_coverage_date | soft (kept, flagged) |              0 | Session on which at least one active ticker has no usable price (cross-asset calendar misalignment).     |
+
+## 3. Counts per rule per ticker
+
+| ticker   | asset_class   |   rows |   duplicate_date |   off_calendar |   missing_price |   nonpositive_price |   missing_session |   stale_price |   zero_volume |   extreme_return |   return_spans_gap |   partial_coverage_date |
+|:---------|:--------------|-------:|-----------------:|---------------:|----------------:|--------------------:|------------------:|--------------:|--------------:|-----------------:|-------------------:|------------------------:|
+| DBC      | commodity     |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                3 |                  0 |                       0 |
+| GLD      | commodity     |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                3 |                  0 |                       0 |
+| SLV      | commodity     |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                6 |                  0 |                       0 |
+| USO      | commodity     |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                8 |                  0 |                       0 |
+| HYG      | credit        |   4900 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |               38 |                  0 |                       0 |
+| LQD      | credit        |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |               17 |                  0 |                       0 |
+| IWM      | equity_broad  |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                6 |                  0 |                       0 |
+| SPY      | equity_broad  |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |               18 |                  0 |                       0 |
+| EEM      | equity_intl   |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                7 |                  0 |                       0 |
+| EFA      | equity_intl   |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |               13 |                  0 |                       0 |
+| XLB      | equity_sector |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                6 |                  0 |                       0 |
+| XLE      | equity_sector |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                9 |                  0 |                       0 |
+| XLF      | equity_sector |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |               16 |                  0 |                       0 |
+| XLI      | equity_sector |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                9 |                  0 |                       0 |
+| XLK      | equity_sector |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |               11 |                  0 |                       0 |
+| XLP      | equity_sector |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |               13 |                  0 |                       0 |
+| XLU      | equity_sector |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |               15 |                  0 |                       0 |
+| XLV      | equity_sector |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |               12 |                  0 |                       0 |
+| XLY      | equity_sector |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                6 |                  0 |                       0 |
+| VNQ      | real_estate   |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |               18 |                  0 |                       0 |
+| TIP      | tips          |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                5 |                  0 |                       0 |
+| IEF      | treasury      |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                0 |                  0 |                       0 |
+| SHY      | treasury      |   4967 |                0 |              0 |               0 |                   0 |                 0 |            15 |             0 |                6 |                  0 |                       0 |
+| TLT      | treasury      |   4967 |                0 |              0 |               0 |                   0 |                 0 |             0 |             0 |                2 |                  0 |                       0 |
+
+## 4. Row-count reconciliation
+
+### Stage checks
+
+| stage              | check                                                         |   expected |   actual | ok   |
+|:-------------------|:--------------------------------------------------------------|-----------:|---------:|:-----|
+| cache -> raw       | price rows (manifest vs raw.prices)                           |     119141 |   119141 | True |
+| cache -> raw       | macro rows (manifest vs raw.macro)                            |      15459 |    15459 | True |
+| raw -> clean       | clean rows = included raw rows + inserted missing sessions    |     119141 |   119141 | True |
+| raw -> clean       | macro_daily rows = NYSE sessions                              |       4967 |     4967 | True |
+| clean -> analysis  | view rows = clean rows - hard-rule exclusions (pandas vs SQL) |     119141 |   119141 | True |
+| clean -> analysis  | no duplicate (date, ticker) in view                           |          0 |        0 | True |
+| analysis -> export | parquet rows = view rows                                      |     119141 |   119141 | True |
+
+### Per-ticker lineage
+
+`cache_rows -> raw_rows -> (+ inserted_missing) clean_rows -> (- excluded_hard) panel_rows`
+
+| ticker   |   cache_rows |   raw_rows |   inserted_missing |   clean_rows |   excluded_hard |   panel_rows |
+|:---------|-------------:|-----------:|-------------------:|-------------:|----------------:|-------------:|
+| XLB      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| XLE      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| XLF      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| XLI      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| XLK      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| XLP      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| XLU      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| XLV      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| XLY      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| SPY      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| IWM      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| EFA      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| EEM      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| SHY      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| IEF      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| TLT      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| LQD      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| HYG      |         4900 |       4900 |                  0 |         4900 |               0 |         4900 |
+| TIP      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| VNQ      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| GLD      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| SLV      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| DBC      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+| USO      |         4967 |       4967 |                  0 |         4967 |               0 |         4967 |
+
+Per-ticker checks: 48 / 48 passed.
+
+## 5. Extreme returns (inspect each one)
+
+`daily_return` uses Adj Close (split + dividend adjusted). `close_return` uses yfinance `Close`, which is split-adjusted but NOT dividend-adjusted, so a large gap between them marks a distribution.
+
+| date       | ticker   | asset_class   |   daily_return |   close_return |   robust_z | flag_return_spans_gap   |
+|:-----------|:---------|:--------------|---------------:|---------------:|-----------:|:------------------------|
+| 2026-01-30 | SLV      | commodity     |        -0.2854 |        -0.2854 |   -16.7328 | False                   |
+| 2020-03-09 | USO      | commodity     |        -0.2532 |        -0.2532 |   -17.8839 | False                   |
+| 2020-04-21 | USO      | commodity     |        -0.2507 |        -0.2507 |   -13.3439 | False                   |
+| 2008-10-13 | EEM      | equity_intl   |         0.2277 |         0.2277 |    10.2829 | False                   |
+| 2008-10-28 | EEM      | equity_intl   |         0.2093 |         0.2093 |     8.8675 | False                   |
+| 2020-03-09 | XLE      | equity_sector |        -0.2014 |        -0.2014 |   -17.0699 | False                   |
+| 2008-12-01 | VNQ      | real_estate   |        -0.1951 |        -0.1951 |    -7.3297 | False                   |
+| 2008-10-10 | SLV      | commodity     |        -0.1799 |        -0.1799 |    -7.8718 | False                   |
+| 2020-03-16 | VNQ      | real_estate   |        -0.1773 |        -0.1773 |   -23.9734 | False                   |
+| 2020-03-18 | USO      | commodity     |        -0.1751 |        -0.1751 |   -11.2490 | False                   |
+| 2008-11-24 | VNQ      | real_estate   |         0.1701 |         0.1701 |     6.6344 | False                   |
+| 2020-04-02 | USO      | commodity     |         0.1667 |         0.1667 |    10.2803 | False                   |
+| 2008-12-01 | XLF      | equity_sector |        -0.1667 |        -0.1667 |    -5.1142 | False                   |
+| 2009-01-20 | XLF      | equity_sector |        -0.1653 |        -0.1653 |    -4.5981 | False                   |
+| 2008-10-13 | XLE      | equity_sector |         0.1647 |         0.1647 |     6.5168 | False                   |
+| 2009-03-23 | XLF      | equity_sector |         0.1646 |         0.1646 |     4.4817 | False                   |
+| 2009-03-23 | VNQ      | real_estate   |         0.1617 |         0.1617 |     4.7936 | False                   |
+| 2008-10-15 | EEM      | equity_intl   |        -0.1617 |        -0.1617 |    -7.2474 | False                   |
+| 2020-03-24 | XLE      | equity_sector |         0.1604 |         0.1604 |    13.1117 | False                   |
+| 2008-10-13 | EFA      | equity_intl   |         0.1589 |         0.1589 |    11.3285 | False                   |
+| 2026-02-05 | SLV      | commodity     |        -0.1577 |        -0.1577 |    -9.1179 | False                   |
+| 2008-10-28 | XLF      | equity_sector |         0.1571 |         0.1571 |     5.8181 | False                   |
+| 2008-10-28 | VNQ      | real_estate   |         0.1564 |         0.1564 |     6.6084 | False                   |
+| 2009-04-09 | XLF      | equity_sector |         0.1554 |         0.1554 |     4.1084 | False                   |
+| 2020-04-03 | USO      | commodity     |         0.1546 |         0.1546 |     9.4261 | False                   |
+| 2008-10-28 | XLE      | equity_sector |         0.1525 |         0.1525 |     5.5528 | False                   |
+| 2008-11-24 | XLF      | equity_sector |         0.1519 |         0.1519 |     5.0638 | False                   |
+| 2008-10-13 | SPY      | equity_broad  |         0.1452 |         0.1452 |    10.8944 | False                   |
+| 2020-03-18 | XLE      | equity_sector |        -0.1436 |        -0.1436 |   -11.8302 | False                   |
+| 2020-03-19 | USO      | commodity     |         0.1401 |         0.1401 |     8.8419 | False                   |
+| 2008-10-28 | XLK      | equity_sector |         0.1390 |         0.1390 |     9.1212 | False                   |
+| 2020-03-16 | XLK      | equity_sector |        -0.1381 |        -0.1381 |   -13.9761 | False                   |
+| 2008-10-28 | EFA      | equity_intl   |         0.1378 |         0.1378 |     9.7007 | False                   |
+| 2020-03-16 | XLF      | equity_sector |        -0.1371 |        -0.1371 |   -15.6514 | False                   |
+| 2020-03-16 | XLE      | equity_sector |        -0.1361 |        -0.1361 |   -11.2147 | False                   |
+| 2020-08-11 | SLV      | commodity     |        -0.1359 |        -0.1359 |    -9.7265 | False                   |
+| 2025-04-09 | XLK      | equity_sector |         0.1343 |         0.1343 |    10.0661 | False                   |
+| 2020-03-16 | IWM      | equity_broad  |        -0.1327 |        -0.1327 |   -14.8464 | False                   |
+| 2020-03-13 | XLF      | equity_sector |         0.1316 |         0.1316 |    14.9042 | False                   |
+| 2020-03-16 | USO      | commodity     |        -0.1307 |        -0.1307 |    -8.7145 | False                   |
+| 2020-03-17 | XLU      | equity_sector |         0.1279 |         0.1279 |    18.7591 | False                   |
+| 2020-03-16 | XLY      | equity_sector |        -0.1267 |        -0.1267 |   -16.0458 | False                   |
+| 2020-03-24 | XLI      | equity_sector |         0.1265 |         0.1265 |    14.9735 | False                   |
+| 2013-04-15 | SLV      | commodity     |        -0.1262 |        -0.1262 |   -10.4670 | False                   |
+| 2020-03-16 | EEM      | equity_intl   |        -0.1248 |        -0.1248 |   -13.1873 | False                   |
+| 2020-03-12 | XLE      | equity_sector |        -0.1247 |        -0.1247 |   -10.4216 | False                   |
+| 2020-03-24 | XLF      | equity_sector |         0.1240 |         0.1240 |    13.8445 | False                   |
+| 2020-03-16 | SLV      | commodity     |        -0.1234 |        -0.1234 |   -12.9170 | False                   |
+| 2008-10-13 | HYG      | credit        |         0.1227 |         0.1227 |    26.7315 | False                   |
+| 2008-10-13 | XLU      | equity_sector |         0.1207 |         0.1207 |     9.3927 | False                   |
+| 2008-10-13 | XLV      | equity_sector |         0.1205 |         0.1205 |    12.2445 | False                   |
+| 2020-03-24 | XLB      | equity_sector |         0.1176 |         0.1176 |    12.7279 | False                   |
+| 2020-03-13 | XLK      | equity_sector |         0.1173 |         0.1173 |    11.5565 | False                   |
+| 2008-10-13 | XLK      | equity_sector |         0.1170 |         0.1170 |     8.2522 | False                   |
+| 2008-10-28 | SPY      | equity_broad  |         0.1169 |         0.1169 |     8.1775 | False                   |
+| 2020-03-16 | XLU      | equity_sector |        -0.1136 |        -0.1136 |   -17.3073 | False                   |
+| 2020-03-16 | XLI      | equity_sector |        -0.1134 |        -0.1134 |   -13.6448 | False                   |
+| 2008-09-17 | GLD      | commodity     |         0.1129 |         0.1129 |     8.0528 | False                   |
+| 2008-09-29 | EFA      | equity_intl   |        -0.1116 |        -0.1116 |    -8.3937 | False                   |
+| 2020-03-12 | IWM      | equity_broad  |        -0.1105 |        -0.1105 |   -12.5528 | False                   |
+
+_Showing 60 of 247 rows; query DuckDB for the rest._
+
+### Days where Close and Adj Close returns differ by > 5pp (large distributions)
+
+| date       | ticker   |   close_return |   daily_return |
+|:-----------|:---------|---------------:|---------------:|
+| 2024-12-23 | DBC      |        -0.0500 |         0.0008 |
+
+## 6. Stale-price runs
+
+A run with normal volume and a plausibly flat price (e.g. a short-Treasury ETF at zero rates) is likely genuine; a run with zero or missing volume is likely a dead feed.
+
+| ticker   | start      | end        |   sessions |   close |   median_volume |
+|:---------|:-----------|:-----------|-----------:|--------:|----------------:|
+| SHY      | 2012-12-05 | 2012-12-11 |          5 | 84.4500 |     770500.0000 |
+| SHY      | 2013-04-15 | 2013-04-19 |          5 | 84.4800 |     591800.0000 |
+| SHY      | 2021-08-17 | 2021-08-23 |          5 | 86.2000 |    1685300.0000 |
+
+## 7. Missing NYSE sessions
+
+_None._
+
+## 8. Cross-asset calendar alignment
+
+0 of 4967 sessions have at least one active ticker without a usable price.
+
+_None._
+
+_None._
+
+## 9. Macro series (FRED)
+
+| series_id   |   rows |   missing_values | first_date   | last_date   |   out_of_range |   max_gap_days |
+|:------------|-------:|-----------------:|:-------------|:------------|---------------:|---------------:|
+| DGS10       |   4941 |                0 | 2007-01-02   | 2026-09-30  |              0 |              4 |
+| DGS2        |   4941 |                0 | 2007-01-02   | 2026-09-30  |              0 |              4 |
+| T10Y2Y      |   4941 |                0 | 2007-01-02   | 2026-09-30  |              0 |              4 |
+
+Forward-fill rule: macro only, lagged 1 session(s) for publication, max 5 sessions; older values become NULL.
+
+| column   |   sessions |   null |   forward_filled |   null_too_stale |
+|:---------|-----------:|-------:|-----------------:|-----------------:|
+| dgs10    |       4967 |      1 |               36 |                0 |
+| dgs2     |       4967 |      1 |               36 |                0 |
+| t10y2y   |       4967 |      1 |               36 |                0 |
+
+Spread consistency: |T10Y2Y - (DGS10 - DGS2)| > 0.015 pp on 0 of 4941 days (max abs diff 0.0000). FRED derives T10Y2Y from the same H.15 inputs, so this checks internal consistency, not independent sources.
+
+_None._
+
+## 10. Analysis panel
+
+`analysis.panel` / `data/curated/panel.parquet`: 119,141 rows, 2007-01-03 to 2026-09-30, columns: `date`, `ticker`, `asset_class`, `adj_close`, `daily_return`, `volume`, `dgs10`, `dgs2`, `t10y2y`, `macro_ffilled`, `dq_soft_flags`.
+
+| column        |   nulls |
+|:--------------|--------:|
+| date          |       0 |
+| ticker        |       0 |
+| asset_class   |       0 |
+| adj_close     |       0 |
+| daily_return  |      24 |
+| volume        |       0 |
+| dgs10         |      23 |
+| dgs2          |      23 |
+| t10y2y        |      23 |
+| macro_ffilled |       0 |
+| dq_soft_flags |       0 |
