@@ -20,9 +20,10 @@ from .calendar import nyse_sessions
 FLAG_COLUMNS = config.HARD_RULES + config.SOFT_RULES
 
 
-def screen_universe(raw: pd.DataFrame, start: str = config.START_DATE,
-                    cutoff: str = config.LATE_START_CUTOFF) -> pd.DataFrame:
+def screen_universe(raw: pd.DataFrame, start: str | None = None,
+                    cutoff: str | None = None) -> pd.DataFrame:
     """One row per ticker: first/last date and an include/flag/drop decision."""
+    start, cutoff = start or config.START_DATE, cutoff or config.LATE_START_CUTOFF
     valid = raw.dropna(subset=["adj_close"])
     first_session = nyse_sessions(start, config.END_DATE)[0]
     u = (valid.groupby("ticker")["date"].agg(first_date="min", last_date="max", raw_rows="size")
@@ -66,8 +67,9 @@ def _robust_z(r: pd.Series) -> pd.Series:
     return (r - med) / (1.4826 * mad.replace(0, np.nan))
 
 
-def apply_rules(raw: pd.DataFrame, end: str = config.END_DATE) -> dict[str, pd.DataFrame]:
+def apply_rules(raw: pd.DataFrame, end: str | None = None) -> dict[str, pd.DataFrame]:
     """Run every rule. Returns {"clean", "universe", "coverage"}."""
+    end = end or config.END_DATE  # resolved at call time, not import time
     raw = raw.copy()
     if "raw_row_id" not in raw:
         raw["raw_row_id"] = np.arange(len(raw))

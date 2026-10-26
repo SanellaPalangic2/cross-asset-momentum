@@ -1,0 +1,24 @@
+{
+  "data_start": "2007-01-03",
+  "data_end": "2026-09-30",
+  "n_assets": 24,
+  "first_signal": "2008-01-31",
+  "last_signal": "2026-09-30",
+  "oos_start": "2023-10-01",
+  "holdout_years": 3,
+  "cost_bps": 10.0,
+  "execution_lag": 1,
+  "selected": {
+    "xs_mom": {
+      "lookback_months": 9,
+      "skip_months": 1
+    },
+    "ts_trend": {
+      "ma_days": 150,
+      "below": "flat"
+    }
+  },
+  "ml_first_test_year": 2012,
+  "n_is_signals": 187,
+  "n_oos_signals": 35
+}

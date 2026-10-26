@@ -15,7 +15,8 @@ from . import config
 from .quality import FLAG_COLUMNS
 
 
-def connect(path=config.DB_PATH) -> duckdb.DuckDBPyConnection:
+def connect(path=None) -> duckdb.DuckDBPyConnection:
+    path = path or config.DB_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(path))
     for schema in ("raw", "clean", "analysis", "meta"):

@@ -94,9 +94,9 @@ def _fetch_fred(series_id: str, start: str, end: str) -> pd.DataFrame:
 
 
 class RawCache:
-    def __init__(self, root: Path = config.RAW_CACHE_DIR):
-        self.root = root
-        self.manifest_path = root / "manifest.json"
+    def __init__(self, root: Path | None = None):
+        self.root = root or config.RAW_CACHE_DIR  # resolved at call time, not import time
+        self.manifest_path = self.root / "manifest.json"
         self.root.mkdir(parents=True, exist_ok=True)
         self.manifest: dict = (json.loads(self.manifest_path.read_text())
                                if self.manifest_path.exists() else {})

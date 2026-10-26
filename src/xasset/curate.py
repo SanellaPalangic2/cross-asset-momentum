@@ -18,15 +18,17 @@ from . import config
 from .calendar import nyse_sessions
 
 
-def align_macro(raw_macro: pd.DataFrame, end: str = config.END_DATE,
-                lag: int = config.MACRO_PUBLICATION_LAG_SESSIONS,
-                limit: int = config.MACRO_FFILL_LIMIT_SESSIONS) -> pd.DataFrame:
+def align_macro(raw_macro: pd.DataFrame, end: str | None = None,
+                lag: int | None = None, limit: int | None = None) -> pd.DataFrame:
     """raw_macro (series_id, date, value) -> one row per NYSE session.
 
     For session t, each series takes the latest observation dated on or before
     session t-lag. If that observation is more than `limit` sessions old, the
     value is NULL.
     """
+    end = end or config.END_DATE  # defaults resolved at call time, not import time
+    lag = config.MACRO_PUBLICATION_LAG_SESSIONS if lag is None else lag
+    limit = config.MACRO_FFILL_LIMIT_SESSIONS if limit is None else limit
     sessions = nyse_sessions(config.START_DATE, end)
     out = pd.DataFrame({"date": sessions})
     out["as_of"] = out["date"].shift(lag)  # NaT for the first `lag` sessions

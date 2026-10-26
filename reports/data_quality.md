@@ -1,6 +1,6 @@
 # Data Quality Report
 
-Generated 2026-10-26 23:20 UTC by `python -m xasset.pipeline`. Do not edit by hand; rerun the pipeline.
+Generated 2026-10-26 23:28 UTC by `python -m xasset.pipeline`. Do not edit by hand; rerun the pipeline.
 
 ## Summary
 
