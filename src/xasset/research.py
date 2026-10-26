@@ -222,8 +222,31 @@ def run() -> dict:
         "n_is_signals": int(len(is_sig)), "n_oos_signals": int(len(oos_sig)),
     }
     (config.RESULTS_DIR / "summary.json").write_text(json.dumps(summary, indent=2))
+    export_dq_summary()
     log.info("results written to %s", config.RESULTS_DIR)
     return summary
+
+
+def export_dq_summary() -> None:
+    """Copy the data-quality headline numbers out of DuckDB, so the README needs only results/."""
+    from .warehouse import connect
+    con = connect()
+    try:
+        counts = con.execute("SELECT * FROM meta.rule_counts").df()
+        recon = con.execute("SELECT * FROM meta.reconciliation").df()
+        universe = con.execute("SELECT ticker, asset_class, first_date, status FROM clean.universe").df()
+        panel_rows = con.execute("SELECT COUNT(*) FROM analysis.panel").fetchall()[0][0]
+    finally:
+        con.close()
+    flags = [c for c in counts.columns if c.startswith("flag_")]
+    out = {
+        "rule_totals": {c: int(counts[c].sum()) for c in flags},
+        "hard_rules": config.HARD_RULES,
+        "reconciliation_checks": int(len(recon)), "reconciliation_passed": int(recon["ok"].sum()),
+        "clean_rows": int(counts["rows"].sum()), "panel_rows": int(panel_rows),
+        "universe": universe.assign(first_date=universe["first_date"].astype(str)).to_dict("records"),
+    }
+    (config.RESULTS_DIR / "dq_summary.json").write_text(json.dumps(out, indent=2))
 
 
 def main() -> None:

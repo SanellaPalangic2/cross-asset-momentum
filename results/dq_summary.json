@@ -1,0 +1,170 @@
+{
+  "rule_totals": {
+    "flag_duplicate_date": 0,
+    "flag_off_calendar": 0,
+    "flag_missing_price": 0,
+    "flag_nonpositive_price": 0,
+    "flag_missing_session": 0,
+    "flag_stale_price": 15,
+    "flag_zero_volume": 0,
+    "flag_extreme_return": 247,
+    "flag_return_spans_gap": 0,
+    "flag_partial_coverage_date": 0
+  },
+  "hard_rules": [
+    "flag_duplicate_date",
+    "flag_off_calendar",
+    "flag_missing_price",
+    "flag_nonpositive_price"
+  ],
+  "reconciliation_checks": 55,
+  "reconciliation_passed": 55,
+  "clean_rows": 119141,
+  "panel_rows": 119141,
+  "universe": [
+    {
+      "ticker": "XLB",
+      "asset_class": "equity_sector",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "XLE",
+      "asset_class": "equity_sector",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "XLF",
+      "asset_class": "equity_sector",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "XLI",
+      "asset_class": "equity_sector",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "XLK",
+      "asset_class": "equity_sector",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "XLP",
+      "asset_class": "equity_sector",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "XLU",
+      "asset_class": "equity_sector",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "XLV",
+      "asset_class": "equity_sector",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "XLY",
+      "asset_class": "equity_sector",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "SPY",
+      "asset_class": "equity_broad",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "IWM",
+      "asset_class": "equity_broad",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "EFA",
+      "asset_class": "equity_intl",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "EEM",
+      "asset_class": "equity_intl",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "SHY",
+      "asset_class": "treasury",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "IEF",
+      "asset_class": "treasury",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "TLT",
+      "asset_class": "treasury",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "LQD",
+      "asset_class": "credit",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "HYG",
+      "asset_class": "credit",
+      "first_date": "2007-04-11",
+      "status": "included_late_start"
+    },
+    {
+      "ticker": "TIP",
+      "asset_class": "tips",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "VNQ",
+      "asset_class": "real_estate",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "GLD",
+      "asset_class": "commodity",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "SLV",
+      "asset_class": "commodity",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "DBC",
+      "asset_class": "commodity",
+      "first_date": "2007-01-03",
+      "status": "included"
+    },
+    {
+      "ticker": "USO",
+      "asset_class": "commodity",
+      "first_date": "2007-01-03",
+      "status": "included"
+    }
+  ]
+}
