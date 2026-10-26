@@ -5,6 +5,7 @@
 equities, Treasuries, credit, TIPS, REITs and commodities, predict returns well enough to survive
 realistic costs, and do they hold up on 3 years of data that was never used to make any choice?
 
+(live demo)[https://cross-asset-momentum.onrender.com]
 ## Key results
 
 The last 3 years (2023-10-01 to 2026-09-30) are a true hold-out. All parameters were chosen on
