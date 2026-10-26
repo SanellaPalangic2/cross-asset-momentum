@@ -164,3 +164,127 @@ dataframes and needs no server.
   and flag disagreements).
 - **Daily close only.** The data can't show whether the close was tradable or
   what the bid-ask spread was.
+
+---
+
+# Research methodology
+
+Results are in the README, which is generated from `results/`. This section
+explains *why* each choice was made; it avoids quoting results so it can't go
+stale.
+
+## Timing and look-ahead
+
+**Signal at the close, trade one session later.** Signals use the close of the
+last session of the month. The trade executes at the next session's close, so
+the first return earned is two sessions after the signal. Trading at the same
+close the signal was computed from assumes you can see the closing price before
+the close, which you can't. At a monthly horizon, the extra day costs almost
+nothing and removes the objection.
+
+**Labels match execution.** The "next-month return" used for IC and ML
+training is the return the backtest actually earns, from the trade close to the
+next trade close, not a calendar-month return. Otherwise the IC would measure
+something the strategy can't capture.
+
+**How look-ahead is tested, not just argued.** The test replaces all data after
+a cutoff with random noise and recomputes everything. If any feature, target
+weight or daily P&L value at or before the cutoff changes, information leaked
+from the future. A deliberately leaky feature (tomorrow's price) is included as
+a positive control: the check must catch it, or the test proves nothing.
+
+## The hold-out
+
+**The last 3 years are untouched.** Every parameter is chosen by in-sample
+Sharpe. The selection function receives backtests with all out-of-sample rows
+cut off, so it *cannot* see the hold-out; a test makes the OOS returns
+spectacular or terrible and confirms the choice doesn't move.
+
+**Purging.** One monthly signal's return window straddles the boundary (it
+starts in-sample and ends out-of-sample). It is dropped from both periods, so
+neither period's IC uses information from the other.
+
+**All grid points are reported, including out-of-sample.** Showing the full
+grid proves the chosen parameters weren't cherry-picked, and reporting a number
+doesn't influence the choice, which was made in-sample. A small, pre-declared
+grid also limits how much overfitting is possible.
+
+## Strategy construction
+
+**Cross-sectional momentum: terciles, equal weight, dollar-neutral.** This
+follows the spec. Long top third, short bottom third. It ranks *raw* returns
+across very different assets, so high-volatility assets (oil, silver, emerging
+markets) tend to sit in the extreme terciles. That is a known weakness. A
+volatility-adjusted ranking is the natural fix, but adding it *after* seeing
+the out-of-sample result would be data snooping, so it is listed as future work
+rather than quietly swapped in.
+
+**Trend: volatility-scaled.** Without scaling, a trend portfolio is mostly a
+bet on its most volatile assets. Scaling each asset to the same target
+volatility (using trailing 60-day vol) makes each asset contribute roughly
+equal risk. Per-asset leverage is capped because SHY's tiny volatility would
+otherwise demand extreme leverage. Gross leverage is capped too. These caps
+were set once and not tuned.
+
+**"Flat" vs "short" below the MA was a grid choice**, made on in-sample data
+like every other parameter.
+
+**Two benchmarks.** The spec says equal-weight buy-and-hold. A pure
+buy-and-hold drifts toward whatever performed best, so a monthly-rebalanced
+1/N is also shown, which is the fairer comparison for strategies that
+rebalance monthly. Both are reported.
+
+**Costs on traded notional.** Cost = rate × Σ|Δweight|, where Δweight is
+measured against the *drifted* weights (what you actually hold before
+rebalancing), not the previous targets. This matters: even an equal-weight
+portfolio trades every month because prices move.
+
+## Metrics
+
+- **Annualized return** is geometric (CAGR). **Volatility and Sharpe** use
+  daily returns × √252. Sharpe uses a 0% risk-free rate because there's no
+  cash series in the data; this flatters long-only strategies a bit and is
+  listed as a limitation.
+- **Max drawdown is measured within each period**, so a drawdown that spans
+  the IS/OOS boundary is split. The drawdown chart shows the continuous
+  series.
+- **IC** is Spearman rank correlation, because ranks ignore magnitudes and are
+  robust to one huge return (e.g. USO in April 2020). **t-stat** =
+  mean / (std / √n). Monthly forward windows don't overlap, so treating the
+  ICs as roughly independent is reasonable.
+- **"Significant" means |t| ≥ 2**, roughly the 5% level. The README verdicts
+  are computed from this rule, not written after looking at the numbers.
+
+## ML extension
+
+- **Target: cross-sectional rank of next-month return**, the same task as the
+  momentum signal (ordering assets), so the two ICs are directly comparable.
+- **Inputs are cross-sectional ranks**, which are stable over time; raw
+  momentum in 2008 and 2017 live on very different scales.
+- **Walk-forward, expanding window, retrained every January.** Each fit may
+  only use rows whose label had fully realized by the fit date (asserted in
+  code). The training log in `results/ml_training_log.csv` shows each fit date
+  next to the newest label it used.
+- **Hyperparameters fixed in advance** (shallow trees, slow learning rate,
+  large leaves, i.e. deliberately conservative) and never tuned. Tuning them
+  would need its own nested validation, and on ~24 assets × ~15 years, the
+  room for overfitting is large.
+- **The comparison is paired**: ML and momentum IC on the *same* months, with a
+  t-test on the difference. Comparing two means from different months would be
+  misleading.
+
+## Engineering choices
+
+- **The README is generated** (`analysis/findings.py`), and a test fails if the
+  committed README differs from what the script produces. No number can be
+  typed by hand or go stale.
+- **The dashboard reads only small pre-aggregated files** in `results/`, so
+  it deploys on a free tier without the data pipeline, DuckDB or scikit-learn.
+- **Bugs this project's own tests found** (useful interview stories):
+  - Default arguments like `end=config.END_DATE` are evaluated once, when
+    Python imports the module. Changing the config later (as tests do) was
+    silently ignored. Reconciliation still passed, because the counts were
+    internally consistent while the grid covered the wrong window. Fixed by
+    resolving defaults inside the function.
+  - The first trade's turnover was dated the day before its cost, so turnover
+    metrics dropped it. The hand-checked toy backtest caught it.
