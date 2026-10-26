@@ -87,3 +87,71 @@ MACRO_PUBLICATION_LAG_SESSIONS = 1
 # Forward-fill macro at most this many sessions. A longer gap stays NULL, so a
 # dead feed cannot silently freeze a value for months.
 MACRO_FFILL_LIMIT_SESSIONS = 5
+
+# =============================================================================
+# Research settings. Everything below is fixed BEFORE looking at results.
+# =============================================================================
+RESULTS_DIR = ROOT / "results"
+FIGURES_DIR = RESULTS_DIR / "figures"
+
+TRADING_DAYS_PER_MONTH = 21
+TRADING_DAYS_PER_YEAR = 252
+
+# Hold-out: the last 3 years of returns are never used for any choice.
+HOLDOUT_YEARS = 3
+OOS_START = "2023-10-01"   # = END_DATE - 3 years + 1 day; asserted in research.py
+
+# Execution: signal computed at the close of signal date s (last session of the
+# month). The trade executes at the close of the NEXT session (s+1), so the new
+# position first earns the return of session s+2. One day of delay costs
+# little at a monthly horizon and rules out trading on the same close the
+# signal was computed from.
+EXECUTION_LAG_SESSIONS = 1
+
+COST_BPS_PER_SIDE = 10.0
+COST_SENSITIVITY_BPS = [0.0, 10.0, 25.0, 50.0]
+
+# Feature defaults (the spec's values)
+MOM_LOOKBACK_MONTHS = 12
+MOM_SKIP_MONTHS = 1
+REVERSAL_MONTHS = 1
+TREND_MA_DAYS = 200
+VOL_WINDOW_DAYS = 60
+
+# Cross-sectional momentum: long top third, short bottom third, equal weight.
+XS_QUANTILE = 1 / 3
+
+# Time-series trend: each asset is scaled to VOL_TARGET_PER_ASSET using its
+# trailing 60-day vol, divided by the number of assets. Per-asset leverage is
+# capped (SHY's ~1.5% vol would otherwise get >10x), and so is gross leverage.
+VOL_TARGET_PER_ASSET = 0.20
+MAX_ASSET_LEVERAGE = 5.0
+MAX_GROSS_LEVERAGE = 2.0
+
+# Parameter grids. Selection rule: highest in-sample Sharpe net of
+# COST_BPS_PER_SIDE. The full grid is reported (IS and OOS) so the choice is
+# visible, but only IS data enters the selection.
+XS_MOM_GRID = [(3, 1), (6, 1), (9, 1), (12, 1), (12, 0)]   # (lookback months, skip months)
+TREND_MA_GRID = [50, 100, 150, 200, 250]
+TREND_BELOW_GRID = ["flat", "short"]
+
+# Stress windows (descriptive only; all are inside the in-sample period).
+SUBPERIODS = {
+    "2008 crisis": ("2008-09-01", "2009-03-31"),
+    "2020 COVID": ("2020-02-19", "2020-04-30"),
+    "2022 rate hikes": ("2022-01-01", "2022-12-31"),
+}
+
+# Asset-class sleeves for the correlation heatmap.
+SLEEVES = {
+    "equity": ["equity_sector", "equity_broad", "equity_intl"],
+    "rates": ["treasury", "tips"],
+    "credit": ["credit"],
+    "real_estate": ["real_estate"],
+    "commodity": ["commodity"],
+}
+
+# ML: hyperparameters are fixed up front and never tuned.
+ML_PARAMS = dict(max_iter=200, learning_rate=0.05, max_depth=3, min_samples_leaf=40,
+                 l2_regularization=1.0, random_state=0)
+ML_MIN_TRAIN_MONTHS = 36
