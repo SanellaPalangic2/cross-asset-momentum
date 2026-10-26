@@ -73,9 +73,10 @@ with tab_perf:
         color="#e1e0d9", opacity=0.6).encode(x="start:T", x2="end:T")
     hover = alt.selection_point(fields=["date"], nearest=True, on="pointerover", empty=False)
     lines = alt.Chart(weekly).mark_line(strokeWidth=2).encode(
-        x=alt.X("date:T", title=None),
-        y=alt.Y("growth:Q", scale=alt.Scale(type="log"), title="Growth of $1 (log)"),
-        color=alt.Color("strategy:N", scale=COLOR_SCALE, legend=alt.Legend(orient="top", title=None)))
+        x=alt.X("date:T", title=None, axis=alt.Axis(format="%Y", tickCount="year")),
+        y=alt.Y("growth:Q", scale=alt.Scale(type="log", nice=False, zero=False), title="Growth of $1 (log)"),
+        color=alt.Color("strategy:N", scale=COLOR_SCALE,
+                        legend=alt.Legend(orient="top", title=None, values=picked)))
     rule = alt.Chart(weekly).mark_rule(color="#898781").encode(
         x="date:T", opacity=alt.condition(hover, alt.value(0.6), alt.value(0)),
         tooltip=[alt.Tooltip("date:T"), alt.Tooltip("strategy:N"), alt.Tooltip("growth:Q", format=".2f")]
@@ -96,12 +97,15 @@ with tab_perf:
 
 with tab_ic:
     st.subheader("Information coefficient: Spearman(signal, next-month return)")
-    st.dataframe(d["ic"].round(3), hide_index=True, width="stretch")
+    st.dataframe(d["ic"].rename(columns={"signal": "Signal", "period": "Period", "ic_mean": "Mean IC",
+                                         "ic_std": "Std", "ic_t": "t-stat", "ic_hit": "Share of months IC > 0",
+                                         "n_months": "Months"}).round(3), hide_index=True, width="stretch")
     roll = d["ic_monthly"].set_index("date")[["ml_pred", "mom_12_1"]].rolling(12, min_periods=12).mean()
     roll = roll.rename(columns={"ml_pred": "ML prediction", "mom_12_1": "12-1 momentum"}).reset_index().melt(
         "date", var_name="signal", value_name="ic").dropna()
     ic_chart = alt.Chart(roll).mark_line(strokeWidth=2).encode(
-        x=alt.X("date:T", title=None), y=alt.Y("ic:Q", title="12-month mean IC"),
+        x=alt.X("date:T", title=None, axis=alt.Axis(format="%Y", tickCount="year")),
+        y=alt.Y("ic:Q", title="12-month mean IC"),
         color=alt.Color("signal:N", scale=alt.Scale(domain=["ML prediction", "12-1 momentum"],
                                                     range=["#2a78d6", "#eb6834"]),
                         legend=alt.Legend(orient="top", title=None)),
@@ -109,7 +113,10 @@ with tab_ic:
     zero = alt.Chart(pd.DataFrame({"y": [0]})).mark_rule(color="#c3c2b7").encode(y="y:Q")
     st.altair_chart((band.properties() + zero + ic_chart).properties(height=320), width="stretch")
     st.markdown("**ML vs momentum on identical months (paired t-test on the IC difference)**")
-    st.dataframe(d["ml"].round(3), hide_index=True, width="stretch")
+    st.dataframe(d["ml"].rename(columns={"period": "Period", "months": "Months", "ml_ic_mean": "ML mean IC",
+                                         "mom_ic_mean": "12-1 momentum mean IC", "diff_mean": "Difference",
+                                         "diff_t": "Paired t", "diff_p": "p-value"}).round(3),
+                 hide_index=True, width="stretch")
 
 with tab_robust:
     st.subheader("Excess-return Sharpe vs transaction cost")
@@ -129,12 +136,14 @@ with tab_corr:
     corr = d["corr"].reset_index().melt("index", var_name="b", value_name="rho").rename(columns={"index": "a"})
     order = list(d["corr"].index)
     heat = alt.Chart(corr).mark_rect(stroke="#fcfcfb", strokeWidth=2).encode(
-        x=alt.X("b:N", sort=order, title=None), y=alt.Y("a:N", sort=order, title=None),
-        color=alt.Color("rho:Q", scale=alt.Scale(domain=[-1, 0, 1], range=["#184f95", "#f0efec", "#a8302f"]),
+        x=alt.X("b:N", sort=order, title=None, axis=alt.Axis(labelAngle=-35)), y=alt.Y("a:N", sort=order, title=None),
+        color=alt.Color("rho:Q", scale=alt.Scale(domain=[-1, 0, 1], range=["#184f95", "#f0efec", "#a8302f"],
+                                                 interpolate="rgb"),
                         title="corr"),
         tooltip=["a:N", "b:N", alt.Tooltip("rho:Q", format=".2f")])
-    text = heat.mark_text(fontSize=11).encode(text=alt.Text("rho:Q", format=".2f"),
-                                              color=alt.value("#0b0b0b"))
+    text = heat.mark_text(fontSize=11).encode(
+        text=alt.Text("rho:Q", format=".2f"),
+        color=alt.condition("abs(datum.rho) > 0.6", alt.value("#ffffff"), alt.value("#0b0b0b")))
     st.altair_chart((heat + text).properties(height=460), width="stretch")
 
 st.caption("ETF data is not futures data; small universe; one vendor; costs are estimates; the hold-out is short. "
