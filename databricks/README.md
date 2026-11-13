@@ -144,20 +144,25 @@ Running `pytest` without arguments still runs only the original `tests/` folder 
 
 ## Results
 
-> Placeholders. Fill these only from your own Databricks runs (paste the outputs back).
+> From the first manual run of notebooks 01–04 on Databricks Free Edition (serverless), 2026-11-13,
+> on the feed exported the same day. Rows marked _TBD_ get filled in after the Job and pipeline runs.
 
 | Item | Value | Source |
 |---|---|---|
-| Files verified (01) | _TBD_ | 01 feed-check table |
-| bronze.prices / bronze.macro rows | _TBD_ / _TBD_ | 01 load checks |
-| silver.prices rows (incl. inserted missing sessions) | _TBD_ | 02 |
-| gold.panel rows | _TBD_ | 03 / 04 |
-| Rows flagged per rule | _TBD_ | `silver.data_quality_summary` |
-| Reconciliation checks passed | _TBD_ of _TBD_ | 04 result |
-| Rows compared vs original `analysis.panel`, max \|return diff\| | _TBD_, _TBD_ | 04 section E |
+| Feed checks (01) | 6 Parquet files, SHA-256 and row counts match the manifest | 01 (the notebook stops if any fail) |
+| bronze.prices / bronze.macro rows | 119,141 / 20,612 (24 tickers; 4 FRED series × 5,153) | export manifest; 04 "manifest → bronze" checks |
+| silver.prices rows | 119,141 (0 missing sessions inserted) | 04 "silver.prices rows = original clean.prices" |
+| gold.panel rows | 119,141 (0 rows removed by hard rules) | 04 section E |
+| Rows flagged per rule | `extreme_return` 247, `stale_price` 15; the other 8 rules 0 | original `meta.rule_counts`; 04 checks each rule's total and every per-ticker cell match |
+| Reconciliation checks passed | **115 of 115** | 04 result |
+| Rows compared vs original `analysis.panel`, max \|daily_return diff\| | 119,141 rows, **0.0** | 04 section E |
 | Expectation failed-record counts match `rows_flagged` | _TBD_ | pipeline Data quality tab |
 | Job run duration (4 tasks) | _TBD_ | Job run page |
-| `gold.panel` rows changed between two runs | _TBD_ | 04 time-travel section |
+| `gold.panel` rows changed between two runs | _TBD_ | 04 time-travel section, after a second run |
+
+The feed is clean: no hard rule fires, so silver and gold have the same row count as the
+raw feed. The rules that do fire are both soft (the row stays, flagged), and the Databricks
+counts equal the original pipeline's exactly.
 
 ## Files
 

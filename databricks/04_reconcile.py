@@ -228,7 +228,10 @@ pl.assert_all_passed(checks)   # raises -> the Job task (and run) fails
 history = spark.sql(f"DESCRIBE HISTORY {GOLD}.panel")
 display(history.select("version", "timestamp", "operation", "operationMetrics").orderBy(F.desc("version")))
 
-versions = sorted(r.version for r in history.select("version").collect())
+# Only versions that rewrote the data count as a "run". Metadata-only versions
+# (e.g. SET TBLPROPERTIES from a table comment) are skipped.
+data_writes = history.where("operation LIKE '%TABLE AS SELECT' OR operation = 'WRITE'")
+versions = sorted(r.version for r in data_writes.select("version").collect())
 if len(versions) < 2:
     print("Only one version so far. Run the job again to compare two runs.")
 else:

@@ -62,9 +62,11 @@ write(macro_daily, "macro_daily", pl.macro_daily_schema(), date_cols=["date", *o
 
 panel_sql = pl.analysis_panel_sql(f"{SILVER}.prices", f"{GOLD}.macro_daily")
 print(panel_sql)
-spark.sql(f"CREATE OR REPLACE TABLE {GOLD}.panel AS {panel_sql}")
-spark.sql(f"COMMENT ON TABLE {GOLD}.panel IS 'Port of analysis.panel: silver.prices minus hard-rule rows "
-          "(extra duplicate copies, off-calendar, missing or non-positive price), joined to macro_daily.'")
+# The comment goes inside the CREATE so each run adds exactly one Delta version
+# (a separate COMMENT ON TABLE would add a second, metadata-only version).
+spark.sql(f"""CREATE OR REPLACE TABLE {GOLD}.panel
+              COMMENT 'Port of analysis.panel: silver.prices minus hard-rule rows (extra duplicate copies, off-calendar, missing or non-positive price), joined to macro_daily.'
+              AS {panel_sql}""")
 
 spark.sql(f"""
     CREATE OR REPLACE TABLE {GOLD}.daily_returns AS
